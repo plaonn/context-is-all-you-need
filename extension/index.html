@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Context Is All You Need</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main id="app" class="shell">
+      <header class="app-header">
+        <div>
+          <p class="eyebrow">STANDALONE CHROMIUM CLIENT</p>
+          <p class="brand">Context Is All You Need</p>
+        </div>
+        <div class="header-actions">
+          <button id="refresh" type="button">Refresh</button>
+          <button id="settings" type="button">Settings</button>
+        </div>
+      </header>
+      <p id="status" class="status-banner" role="status" data-kind="info">Starting…</p>
+      <section id="setup" class="setup-card" hidden>
+        <p class="eyebrow">READ-ONLY AUTH SETUP</p>
+        <h1>Connect your Todoist context</h1>
+        <p>Use a public Todoist OAuth client metadata URL and the exact section that bounds project roots. This extension requests only <code>data:read</code>; it has no client secret and never mutates Todoist.</p>
+        <form id="setup-form">
+          <label for="section-id">Todoist section ID</label>
+          <input id="section-id" name="section-id" autocomplete="off" required placeholder="section id">
+          <label for="client-id">OAuth client metadata URL</label>
+          <input id="client-id" name="client-id" type="url" autocomplete="off" required placeholder="https://example.com/oauth/client.json">
+          <p class="help">The metadata document must declare <code>token_endpoint_auth_method: none</code>, <code>data:read</code>, and this redirect URL:</p>
+          <code id="redirect-uri" class="redirect-uri"></code>
+          <button type="submit" class="primary">Connect read-only</button>
+        </form>
+      </section>
+      <section id="settings-panel" class="settings-panel" hidden>
+        <p><strong>Source boundary:</strong> the configured Todoist section only.</p>
+        <p><strong>Local state:</strong> projected cache is browser session-local; access and refresh tokens stay in Chrome session storage and are never rendered.</p>
+        <button id="disconnect" type="button" class="danger">Remove this browser session</button>
+      </section>
+      <section id="dashboard" aria-live="polite"></section>
+    </main>
+    <script type="module" src="extension/app.js"></script>
+  </body>
+</html>

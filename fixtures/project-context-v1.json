@@ -1,0 +1,66 @@
+{
+  "root": {
+    "id": "fixture-root",
+    "content": "* 🗂️ Atlas context",
+    "description": "Project context v1:\nProject Goal: Make strategy changes explainable\nWorkstream registry:\n- strategy | Strategy\n- delivery | Delivery",
+    "labels": [],
+    "priority": 2,
+    "projectId": "fixture-project",
+    "sectionId": "fixture-section",
+    "parentId": null,
+    "childOrder": 1,
+    "completedAt": null,
+    "isDeleted": false
+  },
+  "activeTasks": [
+    {
+      "id": "fixture-now",
+      "content": "Validate bounded candidate",
+      "description": "Project context v1:\nWorkstream: strategy\nSummary: Compare current evidence\nContext Predecessors: fixture-done\nCheckpoint: Candidate disposition recorded",
+      "labels": ["codex-now"],
+      "priority": 2,
+      "projectId": "fixture-project",
+      "sectionId": "fixture-section",
+      "parentId": "fixture-root",
+      "childOrder": 1,
+      "completedAt": null,
+      "isDeleted": false
+    },
+    {
+      "id": "fixture-noise",
+      "content": "maintenance evidence cleanup",
+      "description": "Project context v1:\nWorkstream: delivery\nSummary: Noise should be suppressed",
+      "labels": ["codex-candidate", "maintenance"],
+      "priority": 2,
+      "projectId": "fixture-project",
+      "sectionId": "fixture-section",
+      "parentId": "fixture-root",
+      "childOrder": 2,
+      "completedAt": null,
+      "isDeleted": false
+    }
+  ],
+  "completedTasks": [
+    {
+      "id": "fixture-done",
+      "content": "Record accepted boundary",
+      "description": "Project context v1:\nWorkstream: strategy\nSummary: Boundary recorded",
+      "labels": [],
+      "priority": 2,
+      "projectId": "fixture-project",
+      "sectionId": "fixture-section",
+      "parentId": "fixture-root",
+      "childOrder": 0,
+      "completedAt": "2026-08-20T00:00:00.000Z",
+      "isDeleted": false
+    }
+  ],
+  "coverage": {
+    "activePagesFetched": 1,
+    "completedPagesFetched": 1,
+    "activeTruncated": false,
+    "completedTruncated": false,
+    "completedSince": "2026-05-22T00:00:00.000Z",
+    "completedUntil": "2026-08-21T00:00:00.000Z"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "name": "context-is-all-you-need",
+  "version": "0.1.0",
+  "private": false,
+  "description": "Standalone, read-only Chromium project-context client for Todoist.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "check:privacy": "node scripts/check-public-safety.mjs",
+    "check": "npm run typecheck && npm test && npm run build && npm run check:privacy"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.11"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "Context Is All You Need",
+  "version": "0.1.0",
+  "description": "Read-only Todoist project context in a dedicated browser tab.",
+  "minimum_chrome_version": "106",
+  "permissions": ["identity", "storage"],
+  "host_permissions": [
+    "https://api.todoist.com/*",
+    "https://app.todoist.com/*"
+  ],
+  "background": {
+    "service_worker": "extension/service-worker.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Open project context"
+  },
+  "options_page": "index.html"
+}
