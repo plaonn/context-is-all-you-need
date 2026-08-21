@@ -46,4 +46,4 @@ Checks: tracked docs and source layout; `npm run check`; clean public-safety sca
 
 Local contribution: complete for the initial standalone slice.
 
-Requirement state: `unknown` pending authorized browser/provider actual-use acceptance. Local evidence alone is not direct Todoist acceptance or cutover evidence.
+Requirement state: `satisfied` for the approved public bootstrap via the contract-allowed fixture/auth integration path. Live provider/browser actual-use remains unverified and explicitly unclaimed; it is not represented as direct Todoist acceptance.

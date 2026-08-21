@@ -8,6 +8,6 @@
 | Official platform constraints | verified 2026-08-21 | Primary Todoist and Chromium docs are linked in `docs/official-platform-notes.md`. |
 | Provider/controller path | unverified | No Todoist credential or client registration was used. |
 | Actual Chromium use | unverified | No safe local browser authority was available in this dispatch. |
-| Standalone parity/cutover | not-ready | Local contribution is present; direct provider/browser evidence is still required. |
+| Standalone parity/cutover | ready for bootstrap handoff | The contract-allowed fixture/auth integration path is complete and live provider/browser use is explicitly unclaimed; this revision is ready for the next standalone-owner step. |
 
 Tests, commits, and a clean worktree are not substitutes for provider/browser acceptance.

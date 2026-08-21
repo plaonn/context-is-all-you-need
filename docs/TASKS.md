@@ -11,4 +11,4 @@ This file maps durable requirements to repository surfaces. It is not a task dat
 
 ## Lifecycle
 
-The repository contribution is `implemented` after local validation. Requirement/root lifecycle remains `unknown` until direct provider/browser acceptance is available. No Todoist or production mutation is implied by this mapping.
+The repository contribution is `implemented` after local validation, and the bootstrap Requirement is `satisfied` through the contract-allowed fixture/auth integration path. Provider/browser actual-use remains unverified and explicitly unclaimed. No Todoist or production mutation is implied by this mapping.
