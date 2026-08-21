@@ -1,6 +1,9 @@
 import {
   OAUTH_CLIENT_REGISTRATION_VERSION,
-  TODOIST_OAUTH_AUTHORIZATION_SERVER,
+  TODOIST_OAUTH_AUTHORIZATION_ENDPOINT,
+  TODOIST_OAUTH_ISSUER,
+  TODOIST_OAUTH_REGISTRATION_ENDPOINT,
+  TODOIST_OAUTH_TOKEN_ENDPOINT,
   type KeyValueStorage,
   type OAuthClientRegistration,
   type OAuthConfig,
@@ -10,9 +13,9 @@ import {
 const SESSION_KEY = "todoist-oauth-session-v1";
 const PENDING_KEY = "todoist-oauth-pending-v1";
 const EXPIRY_SAFETY_MS = 60_000;
-const REGISTRATION_ENDPOINT = `${TODOIST_OAUTH_AUTHORIZATION_SERVER}/oauth/register`;
-const AUTHORIZATION_ENDPOINT = `${TODOIST_OAUTH_AUTHORIZATION_SERVER}/oauth/authorize`;
-const TOKEN_ENDPOINT = `${TODOIST_OAUTH_AUTHORIZATION_SERVER}/oauth/access_token`;
+const REGISTRATION_ENDPOINT = TODOIST_OAUTH_REGISTRATION_ENDPOINT;
+const AUTHORIZATION_ENDPOINT = TODOIST_OAUTH_AUTHORIZATION_ENDPOINT;
+const TOKEN_ENDPOINT = TODOIST_OAUTH_TOKEN_ENDPOINT;
 const SAFE_OAUTH_ERROR_CODES = new Set([
   "access_denied",
   "bad_authorization_code",
@@ -276,7 +279,10 @@ export function isOAuthClientRegistration(value: unknown): value is OAuthClientR
 export function normalizeOAuthClientRegistration(value: unknown): OAuthClientRegistration | null {
   if (isRecord(value)
     && value.registrationVersion === OAUTH_CLIENT_REGISTRATION_VERSION
-    && value.authorizationServer === TODOIST_OAUTH_AUTHORIZATION_SERVER
+    && value.issuer === TODOIST_OAUTH_ISSUER
+    && value.registrationEndpoint === TODOIST_OAUTH_REGISTRATION_ENDPOINT
+    && value.authorizationEndpoint === TODOIST_OAUTH_AUTHORIZATION_ENDPOINT
+    && value.tokenEndpoint === TODOIST_OAUTH_TOKEN_ENDPOINT
     && typeof value.clientId === "string"
     && isDynamicClientId(value.clientId)
     && typeof value.redirectUri === "string"
@@ -284,7 +290,10 @@ export function normalizeOAuthClientRegistration(value: unknown): OAuthClientReg
     return {
       clientId: value.clientId,
       redirectUri: value.redirectUri,
-      authorizationServer: TODOIST_OAUTH_AUTHORIZATION_SERVER,
+      issuer: TODOIST_OAUTH_ISSUER,
+      registrationEndpoint: TODOIST_OAUTH_REGISTRATION_ENDPOINT,
+      authorizationEndpoint: TODOIST_OAUTH_AUTHORIZATION_ENDPOINT,
+      tokenEndpoint: TODOIST_OAUTH_TOKEN_ENDPOINT,
       registrationVersion: OAUTH_CLIENT_REGISTRATION_VERSION
     };
   }
@@ -357,7 +366,10 @@ function parseRegistrationResponse(body: unknown, redirectUri: string): OAuthCli
   return {
     clientId,
     redirectUri,
-    authorizationServer: TODOIST_OAUTH_AUTHORIZATION_SERVER,
+    issuer: TODOIST_OAUTH_ISSUER,
+    registrationEndpoint: TODOIST_OAUTH_REGISTRATION_ENDPOINT,
+    authorizationEndpoint: TODOIST_OAUTH_AUTHORIZATION_ENDPOINT,
+    tokenEndpoint: TODOIST_OAUTH_TOKEN_ENDPOINT,
     registrationVersion: OAUTH_CLIENT_REGISTRATION_VERSION
   };
 }

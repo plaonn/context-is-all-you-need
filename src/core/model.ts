@@ -129,13 +129,19 @@ export type KeyValueStorage = {
   remove(keys: string | string[]): Promise<void>;
 };
 
-export const TODOIST_OAUTH_AUTHORIZATION_SERVER = "https://todoist.com" as const;
-export const OAUTH_CLIENT_REGISTRATION_VERSION = 2 as const;
+export const TODOIST_OAUTH_ISSUER = "https://todoist.com" as const;
+export const TODOIST_OAUTH_REGISTRATION_ENDPOINT = "https://api.todoist.com/oauth/register" as const;
+export const TODOIST_OAUTH_AUTHORIZATION_ENDPOINT = "https://app.todoist.com/oauth/authorize" as const;
+export const TODOIST_OAUTH_TOKEN_ENDPOINT = "https://api.todoist.com/oauth/access_token" as const;
+export const OAUTH_CLIENT_REGISTRATION_VERSION = 3 as const;
 
 export type OAuthClientRegistration = {
   clientId: string;
   redirectUri: string;
-  authorizationServer: typeof TODOIST_OAUTH_AUTHORIZATION_SERVER;
+  issuer: typeof TODOIST_OAUTH_ISSUER;
+  registrationEndpoint: typeof TODOIST_OAUTH_REGISTRATION_ENDPOINT;
+  authorizationEndpoint: typeof TODOIST_OAUTH_AUTHORIZATION_ENDPOINT;
+  tokenEndpoint: typeof TODOIST_OAUTH_TOKEN_ENDPOINT;
   registrationVersion: typeof OAUTH_CLIENT_REGISTRATION_VERSION;
 };
 

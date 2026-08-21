@@ -20,7 +20,7 @@ The extension asks for:
 1. The Todoist section ID that bounds project-context roots.
 2. An explicit `Connect Todoist` action.
 
-On Connect, the extension registers or reuses its own Todoist public client for the current unpacked-extension redirect identity through Todoist Dynamic Client Registration. It uses the current Todoist authorization-server metadata origin for registration, consent, and token exchange, keeps resource reads on the Todoist API origin, requests only `data:read`, uses `chrome.identity.launchWebAuthFlow` and PKCE, and never stores or requires a client secret.
+On Connect, the extension registers or reuses its own Todoist public client for the current unpacked-extension redirect identity through `https://api.todoist.com/oauth/register`, sends consent through `https://app.todoist.com/oauth/authorize`, and exchanges/refreshes through `https://api.todoist.com/oauth/access_token`. It keeps resource reads on the Todoist API origin, requests only `data:read`, uses `chrome.identity.launchWebAuthFlow` and PKCE, and never stores or requires a client secret. The Todoist metadata issuer is recorded separately; endpoint URLs are not synthesized from it.
 
 Todoist access and refresh credentials remain in Chrome session storage; the non-secret client registration is kept in browser-local configuration for reuse. The projected cache is also browser-local and stores only bounded viewer fields. No credential or personal task payload belongs in source control; synthetic public-safe fixtures are under `fixtures/`.
 

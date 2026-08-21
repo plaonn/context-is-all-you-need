@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ensureTodoistClientRegistration,
+  normalizeOAuthClientRegistration,
   TodoistOAuthClient,
   authorizationUrl,
   registerTodoistClient,
@@ -8,7 +9,12 @@ import {
 } from "../src/core/auth.js";
 import { MemoryStorage } from "../src/core/storage.js";
 import { loadConfig, saveConfig } from "../src/extension/config.js";
-import { TODOIST_OAUTH_AUTHORIZATION_SERVER } from "../src/core/model.js";
+import {
+  TODOIST_OAUTH_AUTHORIZATION_ENDPOINT,
+  TODOIST_OAUTH_ISSUER,
+  TODOIST_OAUTH_REGISTRATION_ENDPOINT,
+  TODOIST_OAUTH_TOKEN_ENDPOINT
+} from "../src/core/model.js";
 import type { OAuthClientRegistration, OAuthConfig } from "../src/core/model.js";
 
 const redirectUri = "https://extension.chromiumapp.org/todoist";
@@ -29,7 +35,7 @@ const identity = {
 describe("Todoist public-client PKCE auth", () => {
   it("requests only data:read and includes state plus PKCE", () => {
     const url = new URL(authorizationUrl(config, redirectUri, "state-fixture", "challenge-fixture"));
-    expect(url.origin).toBe(TODOIST_OAUTH_AUTHORIZATION_SERVER);
+    expect(url.origin).toBe("https://app.todoist.com");
     expect(url.pathname).toBe("/oauth/authorize");
     expect(url.searchParams.get("client_id")).toBe(config.clientId);
     expect(url.searchParams.get("scope")).toBe("data:read");
@@ -39,6 +45,23 @@ describe("Todoist public-client PKCE auth", () => {
     expect(url.searchParams.has("client_secret")).toBe(false);
     expect(() => authorizationUrl(config, "https://other-extension.chromiumapp.org/todoist", "state-fixture", "challenge-fixture"))
       .toThrow("redirect");
+  });
+
+  it("keeps issuer provenance separate from concrete OAuth endpoint origins", () => {
+    expect(TODOIST_OAUTH_ISSUER).toBe("https://todoist.com");
+    expect(new URL(TODOIST_OAUTH_REGISTRATION_ENDPOINT).origin).toBe("https://api.todoist.com");
+    expect(new URL(TODOIST_OAUTH_AUTHORIZATION_ENDPOINT).origin).toBe("https://app.todoist.com");
+    expect(new URL(TODOIST_OAUTH_TOKEN_ENDPOINT).origin).toBe("https://api.todoist.com");
+
+    expect(normalizeOAuthClientRegistration(registrationFixture())).toEqual(registrationFixture());
+    expect(normalizeOAuthClientRegistration({
+      ...registrationFixture(),
+      authorizationEndpoint: "https://todoist.com/oauth/authorize"
+    })).toBeNull();
+    expect(normalizeOAuthClientRegistration({
+      ...registrationFixture(),
+      issuer: "https://api.todoist.com"
+    })).toBeNull();
   });
 
   it("accepts a dynamically registered public ID and rejects unsafe configuration", () => {
@@ -58,7 +81,7 @@ describe("Todoist public-client PKCE auth", () => {
     }) as typeof fetch);
     const body = JSON.parse(String(request?.body));
     expect(request?.method).toBe("POST");
-    expect(endpoint).toBe(`${TODOIST_OAUTH_AUTHORIZATION_SERVER}/oauth/register`);
+    expect(endpoint).toBe(TODOIST_OAUTH_REGISTRATION_ENDPOINT);
     expect(body).toEqual({
       client_name: "Context Is All You Need",
       redirect_uris: [redirectUri],
@@ -99,13 +122,29 @@ describe("Todoist public-client PKCE auth", () => {
         registration: {
           clientId: "tdd_old_fixture",
           redirectUri,
-          authorizationServer: "https://api.todoist.com",
+          issuer: "https://api.todoist.com",
           registrationVersion: 1
         }
       }
     });
     const loaded = await loadConfig(localStorage);
     expect(loaded?.registration).toBeNull();
+  });
+
+  it("invalidates the previous issuer-derived registration schema", async () => {
+    const localStorage = new MemoryStorage();
+    await localStorage.set({
+      "project-context-config-v1": {
+        sectionId: "section-fixture",
+        registration: {
+          clientId: "tdd_old_canonical_fixture",
+          redirectUri,
+          issuer: "https://todoist.com",
+          registrationVersion: 2
+        }
+      }
+    });
+    expect((await loadConfig(localStorage))?.registration).toBeNull();
   });
 
   it("re-registers once when the unpacked extension redirect identity changes", async () => {
@@ -158,7 +197,7 @@ describe("Todoist public-client PKCE auth", () => {
       return new Response(JSON.stringify({ access_token: "access-fixture", refresh_token: "refresh-fixture", expires_in: 3600, scope: "data:read" }), { status: 200 });
     }) as typeof fetch, () => 1_000_000);
     await client.connect();
-    expect(exchangeEndpoint).toBe(`${TODOIST_OAUTH_AUTHORIZATION_SERVER}/oauth/access_token`);
+    expect(exchangeEndpoint).toBe(TODOIST_OAUTH_TOKEN_ENDPOINT);
     expect(exchangeBody).toContain("grant_type=authorization_code");
     expect(exchangeBody).toContain("code_verifier=");
     expect(exchangeBody).not.toContain("client_secret");
@@ -234,8 +273,11 @@ function registrationFixture(): OAuthClientRegistration {
   return {
     clientId: "tdd_fixture_client",
     redirectUri,
-    authorizationServer: TODOIST_OAUTH_AUTHORIZATION_SERVER,
-    registrationVersion: 2
+    issuer: TODOIST_OAUTH_ISSUER,
+    registrationEndpoint: TODOIST_OAUTH_REGISTRATION_ENDPOINT,
+    authorizationEndpoint: TODOIST_OAUTH_AUTHORIZATION_ENDPOINT,
+    tokenEndpoint: TODOIST_OAUTH_TOKEN_ENDPOINT,
+    registrationVersion: 3
   };
 }
 

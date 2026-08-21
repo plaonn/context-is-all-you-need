@@ -24,7 +24,7 @@ Checks: `tests/projection.test.ts`, `tests/pagination.test.ts`, `tests/cache.tes
 
 Public repository truth contains no credentials, personal data, private prototype material, or runtime state. Browser authorization uses a dynamically registered public Todoist OAuth client with PKCE and the least-privilege `data:read` scope; the registration is bound to the current Chromium redirect identity, and no client secret is present in public source or browser configuration.
 
-Rationale: a public extension cannot safely hold a symmetric client secret and does not need write authority for a read-only view. The current authorization-server identity must come from Todoist's metadata, and token diagnostics must distinguish network failure from an HTTP OAuth rejection without exposing response details.
+Rationale: a public extension cannot safely hold a symmetric client secret and does not need write authority for a read-only view. Concrete OAuth endpoint identities must follow Todoist's current documented contract rather than being synthesized from an issuer, and token diagnostics must distinguish network failure from an HTTP OAuth rejection without exposing response details.
 
 Failure prevented: accidental credential disclosure, excessive Todoist authority, or raw provider payloads leaking through cache/UI/errors.
 
