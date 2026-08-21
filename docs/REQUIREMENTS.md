@@ -24,7 +24,7 @@ Checks: `tests/projection.test.ts`, `tests/pagination.test.ts`, `tests/cache.tes
 
 Public repository truth contains no credentials, personal data, private prototype material, or runtime state. Browser authorization uses a dynamically registered public Todoist OAuth client with PKCE and the least-privilege `data:read` scope; the registration is bound to the current Chromium redirect identity, and no client secret is present in public source or browser configuration.
 
-Rationale: a public extension cannot safely hold a symmetric client secret and does not need write authority for a read-only view.
+Rationale: a public extension cannot safely hold a symmetric client secret and does not need write authority for a read-only view. The current authorization-server identity must come from Todoist's metadata, and token diagnostics must distinguish network failure from an HTTP OAuth rejection without exposing response details.
 
 Failure prevented: accidental credential disclosure, excessive Todoist authority, or raw provider payloads leaking through cache/UI/errors.
 
@@ -46,4 +46,4 @@ Checks: tracked docs and source layout; `npm run check`; clean public-safety sca
 
 Local contribution: complete for the initial standalone slice.
 
-Requirement state: `satisfied` for the approved public bootstrap via the contract-allowed fixture/auth integration path. Live provider/browser actual-use remains unverified and explicitly unclaimed; it is not represented as direct Todoist acceptance.
+Requirement state: `not-ready` for standalone acceptance until the canonical DCR/consent/PKCE token exchange and authenticated first GET are directly observed. Local fixture/auth integration evidence is useful for regression coverage but does not satisfy the live provider/browser gate. No MMCP removal is permitted while this state remains `not-ready`.

@@ -20,7 +20,7 @@ The extension asks for:
 1. The Todoist section ID that bounds project-context roots.
 2. An explicit `Connect Todoist` action.
 
-On Connect, the extension registers or reuses its own Todoist public client for the current unpacked-extension redirect identity through Todoist Dynamic Client Registration. It requests only `data:read`, uses `chrome.identity.launchWebAuthFlow` and PKCE, and never stores or requires a client secret.
+On Connect, the extension registers or reuses its own Todoist public client for the current unpacked-extension redirect identity through Todoist Dynamic Client Registration. It uses the current Todoist authorization-server metadata origin for registration, consent, and token exchange, keeps resource reads on the Todoist API origin, requests only `data:read`, uses `chrome.identity.launchWebAuthFlow` and PKCE, and never stores or requires a client secret.
 
 Todoist access and refresh credentials remain in Chrome session storage; the non-secret client registration is kept in browser-local configuration for reuse. The projected cache is also browser-local and stores only bounded viewer fields. No credential or personal task payload belongs in source control; synthetic public-safe fixtures are under `fixtures/`.
 
@@ -28,4 +28,4 @@ Todoist access and refresh credentials remain in Chrome session storage; the non
 
 The accepted MMCP Project context v1 semantics are preserved in the browser-owned core: configurable section discovery, top-level root filtering, bounded 50-item pagination, direct-child active/recent-completed reads, goal/workstream metadata, lifecycle lanes, salience suppression, presentation-only contextual lineage, and 60-second fresh / 5-minute stale-while-revalidate cache behavior. See [docs/SPEC.md](docs/SPEC.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), and [docs/decisions/0001-browser-native-public-client.md](docs/decisions/0001-browser-native-public-client.md).
 
-Actual Todoist dogfood is intentionally unverified in this public bootstrap when no safe local browser credential and authority are available. The contract-allowed fixture/auth integration path and explicit non-claim are recorded in the acceptance ledger; local tests and builds do not prove live provider behavior.
+The acceptance ledger separates local checks from live provider/browser evidence. The current ledger records a negative dogfood result at token exchange and keeps standalone parity/cutover `not-ready` until a post-fix DCR → consent → PKCE token exchange → authenticated first GET is directly observed.

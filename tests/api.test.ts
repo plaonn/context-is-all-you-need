@@ -29,6 +29,7 @@ describe("Todoist read-only API adapter", () => {
     expect(source.activeTasks.map((task) => task.id)).toEqual(["active"]);
     expect(source.completedTasks.map((task) => task.id)).toEqual(["done"]);
     expect(requests.every((request) => request.method === "GET")).toBe(true);
+    expect(requests.every((request) => new URL(request.url).origin === "https://api.todoist.com")).toBe(true);
     expect(requests.some((request) => request.url.includes("limit=50"))).toBe(true);
     expect(requests.some((request) => request.url.includes("parent_id=root"))).toBe(true);
   });

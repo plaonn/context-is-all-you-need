@@ -7,7 +7,7 @@
   "permissions": ["identity", "storage"],
   "host_permissions": [
     "https://api.todoist.com/*",
-    "https://app.todoist.com/*"
+    "https://todoist.com/*"
   ],
   "background": {
     "service_worker": "extension/service-worker.js",

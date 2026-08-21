@@ -8,6 +8,7 @@ import {
 } from "../src/core/auth.js";
 import { MemoryStorage } from "../src/core/storage.js";
 import { loadConfig, saveConfig } from "../src/extension/config.js";
+import { TODOIST_OAUTH_AUTHORIZATION_SERVER } from "../src/core/model.js";
 import type { OAuthClientRegistration, OAuthConfig } from "../src/core/model.js";
 
 const redirectUri = "https://extension.chromiumapp.org/todoist";
@@ -28,6 +29,8 @@ const identity = {
 describe("Todoist public-client PKCE auth", () => {
   it("requests only data:read and includes state plus PKCE", () => {
     const url = new URL(authorizationUrl(config, redirectUri, "state-fixture", "challenge-fixture"));
+    expect(url.origin).toBe(TODOIST_OAUTH_AUTHORIZATION_SERVER);
+    expect(url.pathname).toBe("/oauth/authorize");
     expect(url.searchParams.get("client_id")).toBe(config.clientId);
     expect(url.searchParams.get("scope")).toBe("data:read");
     expect(url.searchParams.get("code_challenge_method")).toBe("S256");
@@ -47,12 +50,15 @@ describe("Todoist public-client PKCE auth", () => {
 
   it("registers the exact redirect as a public read-only client", async () => {
     let request: RequestInit | undefined;
-    const registration = await registerTodoistClient(redirectUri, (async (_input, init) => {
+    let endpoint = "";
+    const registration = await registerTodoistClient(redirectUri, (async (input, init) => {
+      endpoint = String(input);
       request = init;
       return registrationResponse();
     }) as typeof fetch);
     const body = JSON.parse(String(request?.body));
     expect(request?.method).toBe("POST");
+    expect(endpoint).toBe(`${TODOIST_OAUTH_AUTHORIZATION_SERVER}/oauth/register`);
     expect(body).toEqual({
       client_name: "Context Is All You Need",
       redirect_uris: [redirectUri],
@@ -61,7 +67,7 @@ describe("Todoist public-client PKCE auth", () => {
       response_types: ["code"],
       token_endpoint_auth_method: "none"
     });
-    expect(registration).toEqual({ clientId: "tdd_fixture_client", redirectUri, registrationVersion: 1 });
+    expect(registration).toEqual(registrationFixture());
     expect(JSON.stringify(registration)).not.toContain("secret");
   });
 
@@ -83,6 +89,23 @@ describe("Todoist public-client PKCE auth", () => {
     const sanitized = await loadConfig(localStorage);
     expect(sanitized?.registration).toEqual(registration);
     expect(JSON.stringify(sanitized)).not.toContain("synthetic-secret");
+  });
+
+  it("invalidates a pre-canonical registration so the next connect re-registers it", async () => {
+    const localStorage = new MemoryStorage();
+    await localStorage.set({
+      "project-context-config-v1": {
+        sectionId: "section-fixture",
+        registration: {
+          clientId: "tdd_old_fixture",
+          redirectUri,
+          authorizationServer: "https://api.todoist.com",
+          registrationVersion: 1
+        }
+      }
+    });
+    const loaded = await loadConfig(localStorage);
+    expect(loaded?.registration).toBeNull();
   });
 
   it("re-registers once when the unpacked extension redirect identity changes", async () => {
@@ -127,12 +150,15 @@ describe("Todoist public-client PKCE auth", () => {
 
   it("exchanges code without a client secret and stores only session credentials", async () => {
     const storage = new MemoryStorage();
+    let exchangeEndpoint = "";
     let exchangeBody = "";
-    const client = new TodoistOAuthClient(config, storage, identity, (async (_input, init) => {
+    const client = new TodoistOAuthClient(config, storage, identity, (async (input, init) => {
+      exchangeEndpoint = String(input);
       exchangeBody = String(init?.body ?? "");
       return new Response(JSON.stringify({ access_token: "access-fixture", refresh_token: "refresh-fixture", expires_in: 3600, scope: "data:read" }), { status: 200 });
     }) as typeof fetch, () => 1_000_000);
     await client.connect();
+    expect(exchangeEndpoint).toBe(`${TODOIST_OAUTH_AUTHORIZATION_SERVER}/oauth/access_token`);
     expect(exchangeBody).toContain("grant_type=authorization_code");
     expect(exchangeBody).toContain("code_verifier=");
     expect(exchangeBody).not.toContain("client_secret");
@@ -146,6 +172,25 @@ describe("Todoist public-client PKCE auth", () => {
     const client = new TodoistOAuthClient(config, storage, identity, async () => new Response(JSON.stringify({ access_token: "access-refreshed", expires_in: 3600, scope: "data:read" }), { status: 200 }), () => 1_000_000);
     await expect(client.getAccessToken(true)).resolves.toBe("access-refreshed");
     expect((await storage.get<{ refreshToken: string }>("todoist-oauth-session-v1"))?.refreshToken).toBe("refresh-original");
+  });
+
+  it("distinguishes token network failures from sanitized OAuth HTTP errors", async () => {
+    const networkClient = new TodoistOAuthClient(config, new MemoryStorage(), identity, async () => {
+      throw new Error("network-secret-fixture");
+    });
+    await expect(networkClient.connect()).rejects.toMatchObject({
+      code: "network_error",
+      message: "Todoist token exchange could not reach the authorization server; check your connection and try again."
+    });
+
+    const httpClient = new TodoistOAuthClient(config, new MemoryStorage(), identity, async () => new Response(
+      JSON.stringify({ error: "invalid_grant", error_description: "token-secret-fixture" }),
+      { status: 400 }
+    ));
+    await expect(httpClient.connect()).rejects.toMatchObject({
+      code: "oauth_error",
+      message: "Todoist token exchange was rejected by Todoist (400: invalid_grant)"
+    });
   });
 
   it("fails before authorization when the stored redirect binding is stale", async () => {
@@ -186,7 +231,12 @@ describe("Todoist public-client PKCE auth", () => {
 });
 
 function registrationFixture(): OAuthClientRegistration {
-  return { clientId: "tdd_fixture_client", redirectUri, registrationVersion: 1 };
+  return {
+    clientId: "tdd_fixture_client",
+    redirectUri,
+    authorizationServer: TODOIST_OAUTH_AUTHORIZATION_SERVER,
+    registrationVersion: 2
+  };
 }
 
 function registrationResponseBody(): Record<string, unknown> {

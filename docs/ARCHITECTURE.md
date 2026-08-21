@@ -29,8 +29,8 @@ There is no backend, native host, SQLite/file cache, content script, task write 
 
 ## Extension storage
 
-Configuration is stored in `chrome.storage.local` because it contains only a section boundary and non-secret Dynamic Client Registration metadata (`clientId`, exact `redirectUri`, and `registrationVersion`). OAuth access/refresh tokens and projected cache entries use `chrome.storage.session`, which Chromium documents as in-memory and cleared when the extension/browser session ends. Cache persistence is a performance aid, not canonical state.
+Configuration is stored in `chrome.storage.local` because it contains only a section boundary and non-secret Dynamic Client Registration metadata (`clientId`, canonical `authorizationServer`, exact `redirectUri`, and `registrationVersion`). Registration version 2 is bound to the current `https://todoist.com` authorization-server identity; older or differently bound metadata normalizes to empty and is re-registered on the next explicit Connect. OAuth access/refresh tokens and projected cache entries use `chrome.storage.session`, which Chromium documents as in-memory and cleared when the extension/browser session ends. Cache persistence is a performance aid, not canonical state.
 
 ## Failure handling
 
-Provider failures are reduced to typed status messages and a bounded stale/error projection. Raw response bodies are never copied to errors or cache. Unauthorized API reads request one token refresh through the auth provider and retry once; all other failures remain visible and do not trigger polling or automatic wake.
+Provider failures are reduced to typed status messages and a bounded stale/error projection. Token network failures, HTTP OAuth errors, redirects, and client-registration mismatches remain distinguishable without exposing raw response bodies, response descriptions, or credential material. Unauthorized API reads request one token refresh through the auth provider and retry once; all other failures remain visible and do not trigger polling or automatic wake.

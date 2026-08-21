@@ -129,11 +129,13 @@ export type KeyValueStorage = {
   remove(keys: string | string[]): Promise<void>;
 };
 
-export const OAUTH_CLIENT_REGISTRATION_VERSION = 1 as const;
+export const TODOIST_OAUTH_AUTHORIZATION_SERVER = "https://todoist.com" as const;
+export const OAUTH_CLIENT_REGISTRATION_VERSION = 2 as const;
 
 export type OAuthClientRegistration = {
   clientId: string;
   redirectUri: string;
+  authorizationServer: typeof TODOIST_OAUTH_AUTHORIZATION_SERVER;
   registrationVersion: typeof OAUTH_CLIENT_REGISTRATION_VERSION;
 };
 

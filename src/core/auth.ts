@@ -1,5 +1,6 @@
 import {
   OAUTH_CLIENT_REGISTRATION_VERSION,
+  TODOIST_OAUTH_AUTHORIZATION_SERVER,
   type KeyValueStorage,
   type OAuthClientRegistration,
   type OAuthConfig,
@@ -9,7 +10,22 @@ import {
 const SESSION_KEY = "todoist-oauth-session-v1";
 const PENDING_KEY = "todoist-oauth-pending-v1";
 const EXPIRY_SAFETY_MS = 60_000;
-const REGISTRATION_ENDPOINT = "https://api.todoist.com/oauth/register";
+const REGISTRATION_ENDPOINT = `${TODOIST_OAUTH_AUTHORIZATION_SERVER}/oauth/register`;
+const AUTHORIZATION_ENDPOINT = `${TODOIST_OAUTH_AUTHORIZATION_SERVER}/oauth/authorize`;
+const TOKEN_ENDPOINT = `${TODOIST_OAUTH_AUTHORIZATION_SERVER}/oauth/access_token`;
+const SAFE_OAUTH_ERROR_CODES = new Set([
+  "access_denied",
+  "bad_authorization_code",
+  "incorrect_application_credentials",
+  "invalid_application_status",
+  "invalid_client",
+  "invalid_client_metadata",
+  "invalid_grant",
+  "invalid_request",
+  "invalid_scope",
+  "unsupported_grant_type",
+  "unsupported_response_type"
+]);
 
 let registrationFlight: { redirectUri: string; promise: Promise<OAuthClientRegistration> } | null = null;
 
@@ -25,6 +41,8 @@ export class OAuthError extends Error {
       | "cancelled"
       | "state_mismatch"
       | "provider_error"
+      | "network_error"
+      | "oauth_error"
       | "invalid_response"
       | "registration_failed"
       | "registration_rate_limited"
@@ -137,7 +155,10 @@ export class TodoistOAuthClient {
       }
       const error = callbackUrl.searchParams.get("error");
       if (isClientMismatchCode(error)) throw clientMismatchError();
-      if (error) throw new OAuthError("provider_error", `Todoist authorization failed: ${safeToken(error)}`);
+      if (error) {
+        const safeCode = safeOAuthErrorCode(error);
+        throw new OAuthError("oauth_error", `Todoist authorization was rejected${safeCode ? ` (${safeCode})` : ""}`);
+      }
       const returnedState = callbackUrl.searchParams.get("state");
       const code = callbackUrl.searchParams.get("code");
       if (!code || returnedState !== state) throw new OAuthError("state_mismatch", "Todoist authorization state did not match");
@@ -191,17 +212,18 @@ export class TodoistOAuthClient {
   private async tokenRequest(values: Record<string, string>, fallbackRefreshToken: string | null = null): Promise<OAuthSession> {
     let response: Response;
     try {
-      response = await this.fetcher("https://api.todoist.com/oauth/access_token", {
+      response = await this.fetcher(TOKEN_ENDPOINT, {
         method: "POST",
         headers: { Accept: "application/json", "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams(values).toString()
       });
     } catch {
-      throw new OAuthError("provider_error", "Todoist token exchange failed");
+      throw new OAuthError("network_error", "Todoist token exchange could not reach the authorization server; check your connection and try again.");
     }
     if (!response.ok) {
-      if (isClientMismatchCode(await responseErrorCode(response))) throw clientMismatchError();
-      throw new OAuthError("provider_error", `Todoist token exchange failed (${response.status})`);
+      const errorCode = await responseErrorCode(response);
+      if (isClientMismatchCode(errorCode)) throw clientMismatchError();
+      throw new OAuthError("oauth_error", oauthHttpError("Todoist token exchange", response.status, errorCode));
     }
     let body: unknown;
     try {
@@ -227,7 +249,7 @@ export function authorizationUrl(config: OAuthConfig, redirectUri: string, state
   if (redirectUri !== config.redirectUri) {
     throw new OAuthError("redirect_mismatch", "Todoist authorization redirect did not match the registered extension identity");
   }
-  const url = new URL("https://app.todoist.com/oauth/authorize");
+  const url = new URL(AUTHORIZATION_ENDPOINT);
   url.searchParams.set("client_id", config.clientId);
   url.searchParams.set("scope", config.scope);
   url.searchParams.set("state", state);
@@ -254,6 +276,7 @@ export function isOAuthClientRegistration(value: unknown): value is OAuthClientR
 export function normalizeOAuthClientRegistration(value: unknown): OAuthClientRegistration | null {
   if (isRecord(value)
     && value.registrationVersion === OAUTH_CLIENT_REGISTRATION_VERSION
+    && value.authorizationServer === TODOIST_OAUTH_AUTHORIZATION_SERVER
     && typeof value.clientId === "string"
     && isDynamicClientId(value.clientId)
     && typeof value.redirectUri === "string"
@@ -261,6 +284,7 @@ export function normalizeOAuthClientRegistration(value: unknown): OAuthClientReg
     return {
       clientId: value.clientId,
       redirectUri: value.redirectUri,
+      authorizationServer: TODOIST_OAUTH_AUTHORIZATION_SERVER,
       registrationVersion: OAUTH_CLIENT_REGISTRATION_VERSION
     };
   }
@@ -284,16 +308,22 @@ function base64Url(bytes: Uint8Array): string {
   return btoa(value).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }
 
-function safeToken(value: string): string {
-  return value.replace(/[\r\n]/g, " ").slice(0, 80);
-}
-
 function clientMismatchError(): OAuthError {
   return new OAuthError("client_mismatch", "Todoist rejected this client registration. Click Connect Todoist to register this installation again.");
 }
 
+function oauthHttpError(operation: string, status: number, errorCode: string | null): string {
+  const safeCode = safeOAuthErrorCode(errorCode);
+  return `${operation} was rejected by Todoist (${status}${safeCode ? `: ${safeCode}` : ""})`;
+}
+
 function isClientMismatchCode(value: string | null): boolean {
   return value === "invalid_client" || value === "incorrect_application_credentials";
+}
+
+function safeOAuthErrorCode(value: string | null): string | null {
+  if (!value || !/^[a-z0-9_]{1,64}$/.test(value)) return null;
+  return SAFE_OAUTH_ERROR_CODES.has(value) ? value : null;
 }
 
 async function responseErrorCode(response: Response): Promise<string | null> {
@@ -324,7 +354,12 @@ function parseRegistrationResponse(body: unknown, redirectUri: string): OAuthCli
   ) {
     throw new OAuthError("invalid_response", "Todoist client registration metadata did not match the public read-only contract.");
   }
-  return { clientId, redirectUri, registrationVersion: OAUTH_CLIENT_REGISTRATION_VERSION };
+  return {
+    clientId,
+    redirectUri,
+    authorizationServer: TODOIST_OAUTH_AUTHORIZATION_SERVER,
+    registrationVersion: OAUTH_CLIENT_REGISTRATION_VERSION
+  };
 }
 
 function includesString(value: unknown, expected: string): boolean {

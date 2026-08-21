@@ -10,8 +10,10 @@
 
 - Load the unpacked extension in an authorized local Chromium profile.
 - Use a read-only Todoist account authority through the extension's Dynamic Client Registration flow.
-- Verify section discovery, selected projection, cache freshness transitions, canonical links, and absence of controls that mutate source.
+- Verify canonical `todoist.com` DCR/consent/PKCE token exchange, authenticated first GET from `api.todoist.com`, section discovery, selected projection, cache freshness transitions, canonical links, and absence of controls that mutate source.
 - Record provider/browser evidence and reconcile whether standalone parity/cutover is `ready` or `not-ready`.
+
+Until that live token and first-GET evidence exists, standalone parity/cutover remains `not-ready`; MMCP removal is out of scope.
 
 ## Reserved future decisions
 
