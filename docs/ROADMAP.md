@@ -6,14 +6,14 @@
 - Establish the standalone MV3 page/action, GET-only Todoist adapter, PKCE auth seam, cache, renderer, fixtures, tests, and privacy scan.
 - Document browser/provider boundaries and preserve actual-use evidence as separate from local delivery.
 
-## Next bounded validation
+## Standalone acceptance — complete 2026-08-21
 
-- Load the unpacked extension in an authorized local Chromium profile.
-- Use a read-only Todoist account authority through the extension's Dynamic Client Registration flow.
-- Verify the concrete Todoist DCR/consent/PKCE route (`api.todoist.com/oauth/register` → `app.todoist.com/oauth/authorize` → `api.todoist.com/oauth/access_token`), authenticated first GET from `api.todoist.com`, section discovery, selected projection, cache freshness transitions, canonical links, and absence of controls that mutate source.
-- Record provider/browser evidence and reconcile whether standalone parity/cutover is `ready` or `not-ready`.
+- The user reloaded the unpacked extension and verified the clean read-only Todoist DCR/consent/PKCE route without a DevTools fetch wrapper.
+- Authenticated Todoist data reads and the project-context UI rendered successfully.
+- Functional Requirement is satisfied and standalone parity/cutover is `ready`; the MMCP-removal hold from this task is released.
+- Non-blocking UX improvements are recorded as a separate product follow-up, outside this task's closure.
 
-Until that live token and first-GET evidence exists, standalone parity/cutover remains `not-ready`; MMCP removal is out of scope.
+Further UX work, if desired, is not a prerequisite for this functional acceptance.
 
 ## Reserved future decisions
 

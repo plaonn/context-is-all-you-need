@@ -46,4 +46,4 @@ Checks: tracked docs and source layout; `npm run check`; clean public-safety sca
 
 Local contribution: complete for the initial standalone slice.
 
-Requirement state: `not-ready` for standalone acceptance until the canonical DCR/consent/PKCE token exchange and authenticated first GET are directly observed on the clean production path. The user has supplied wrapper-assisted evidence that token exchange, authenticated reads, and UI render work; this is provider/browser evidence but does not yet prove the native production fetch path. No MMCP removal is permitted while this state remains `not-ready`.
+Requirement state: `satisfied` for standalone acceptance. The user directly verified the clean unpacked-extension path after reload, without a DevTools fetch wrapper: canonical DCR/consent/PKCE token exchange, authenticated Todoist data reads, and project-context UI rendering all succeeded. Standalone cutover is `ready`; the MMCP-removal hold from this task is released, while any removal remains a separate authorized workstream. Non-blocking UX improvements are a separate product follow-up and do not change this Requirement state.
