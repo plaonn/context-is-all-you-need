@@ -21,16 +21,19 @@
       <p id="status" class="status-banner" role="status" data-kind="info">Starting…</p>
       <section id="setup" class="setup-card" hidden>
         <p class="eyebrow">READ-ONLY AUTH SETUP</p>
-        <h1>Connect your Todoist context</h1>
-        <p>Choose the section that bounds project roots. When you connect, this extension creates and reuses its own public Todoist client for this browser installation. It requests only <code>data:read</code>; it has no client secret and never mutates Todoist.</p>
+        <h1>Connect your Todoist Context</h1>
+        <p>Give this local Context a name and choose the section that bounds its project roots. When you connect, this extension creates and reuses its own public Todoist client for this browser installation. It requests only <code>data:read</code>; it has no client secret and never mutates Todoist.</p>
         <form id="setup-form">
+          <label for="context-label">Context label</label>
+          <input id="context-label" name="context-label" autocomplete="off" required placeholder="Work or Personal">
           <label for="section-id">Todoist section ID</label>
           <input id="section-id" name="section-id" autocomplete="off" required placeholder="section id">
           <button type="submit" class="primary">Connect Todoist</button>
         </form>
       </section>
       <section id="settings-panel" class="settings-panel" hidden>
-        <p><strong>Source boundary:</strong> the configured Todoist section only.</p>
+        <div id="context-settings"></div>
+        <p><strong>Source boundary:</strong> the selected Context's Todoist section only.</p>
         <p><strong>Local state:</strong> projected cache is browser session-local; access and refresh tokens stay in Chrome session storage and are never rendered.</p>
         <button id="disconnect" type="button" class="danger">Remove this browser session</button>
       </section>

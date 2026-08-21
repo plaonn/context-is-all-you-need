@@ -2,13 +2,24 @@
 
 ## Product surface
 
-The extension opens a dedicated full tab. The optional toolbar action opens the same `index.html` page. The page presents a project selector, source/freshness status, goal, workstream lanes, bounded task nodes, contextual predecessor links, blocker/resume/checkpoint details, coverage, and canonical Todoist links.
+The extension opens a dedicated full tab. The optional toolbar action opens the same `index.html` page. The page presents:
+
+- a local Context selector and settings surface;
+- one compact card for every project root in the selected Context;
+- project goal/state counts, current or blocked attention, connected workstream lanes, contextual predecessor links, and canonical Todoist links; and
+- progressive project history/detail, source coverage, and explicit freshness/partial-read status.
+
+The map connectors and predecessor links are presentation-only. They do not create dependencies or alter Todoist lifecycle.
 
 ## Source boundary
 
-The user configures one Todoist section ID. The adapter reads at most four pages of active tasks at 50 items per page for discovery. Only top-level tasks (`parent_id = null`) with an exact `Project context v1:` block or the established `* 🗂️` title convention become roots; loose tasks in the same section are excluded.
+The user keeps a browser-local list of Context mappings. Each mapping has a local key, label, and one Todoist section ID; mapping edits never write to Todoist. Existing `sectionId` configuration migrates to a single `Current context` mapping without repeating OAuth setup. A board read uses only the selected Context's section boundary.
 
-For a selected root, the adapter reads the root task, at most four pages of active direct children, and at most three pages of completed direct children within the last 90 days. It reports page counts and truncation rather than implying that a bounded window is exhaustive.
+For discovery, the adapter reads at most four pages of section tasks at 50 items per page. Only top-level tasks (`parent_id = null`) with an exact `Project context v1:` block or the established `* 🗂️` title convention become roots; loose tasks in the same section are excluded.
+
+For the initial board, each discovered root receives a compact read: the root, at most two pages of active direct children, and at most one page of recent completed direct children. The board therefore does not synchronously read the full deep history of every project, while a recent completed predecessor can remain visually subordinate in the connected map. One compact-read failure is retained on that project card while other cards remain usable.
+
+When a project is expanded, the adapter reads the root, at most four pages of active direct children, and at most three pages of completed direct children within the last 90 days. It reports page counts and truncation rather than implying that a bounded window is exhaustive.
 
 ## Metadata v1
 
@@ -40,7 +51,7 @@ Checkpoint: Dry-run disposition recorded
 
 ## Cache contract
 
-Discovery and selected snapshots use separate browser-local cache entries. A fresh entry lasts 60 seconds; the next five minutes are stale-while-revalidate. Stale data is returned immediately with `refreshing` and provider-error state when applicable. Expired data requires a provider read. Concurrent reads for the same key share one in-flight request. Cache values contain only projected viewer fields and coverage; no raw provider response or token is stored.
+The board cache keeps discovery per Context, compact snapshots per project, and deep snapshots per expanded project in browser-local session storage. A fresh entry lasts 60 seconds; the next five minutes are stale-while-revalidate. Stale data is returned immediately with `refreshing` and provider-error state when applicable; the user can request a refresh explicitly. Expired data requires a provider read. Compact project reads are bounded to four concurrent projects by default, and concurrent reads for the same key share one in-flight request. Cache values contain only projected viewer fields and coverage; no raw provider response or token is stored.
 
 ## Auth and mutation boundary
 

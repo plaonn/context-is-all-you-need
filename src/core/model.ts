@@ -77,6 +77,7 @@ export type ProjectContextLane = {
 
 export type ProjectContextSnapshot = {
   schemaVersion: 1;
+  detailLevel?: "compact" | "deep";
   id: string;
   title: string;
   url: string;
@@ -120,7 +121,32 @@ export type ProjectContextSelectionProjection = {
 
 export type ProjectContextReader = {
   readProjectContextRoots(sectionId: string): Promise<TodoistProjectContextRootDiscovery>;
+  /** Compact read used by the parallel board. Implementations may omit it while migrating. */
+  readProjectContextCompact?(rootTaskId: string, now?: Date): Promise<TodoistProjectContextSource>;
   readProjectContext(rootTaskId: string, now?: Date): Promise<TodoistProjectContextSource>;
+};
+
+export type ProjectContextContext = {
+  localKey: string;
+  label: string;
+  sectionId: string;
+};
+
+export type ProjectContextBoardProject = {
+  root: ProjectContextRootSummary;
+  snapshot: ProjectContextSnapshot | null;
+  detail: ProjectContextSnapshot | null;
+  freshness: ProjectContextFreshness;
+  detailFreshness: ProjectContextFreshness | null;
+  error: "provider_unavailable" | null;
+};
+
+export type ProjectContextBoardProjection = {
+  schemaVersion: 1;
+  context: ProjectContextContext;
+  projects: ProjectContextBoardProject[];
+  discoveryCoverage: TodoistProjectContextDiscoveryCoverage;
+  freshness: ProjectContextFreshness;
 };
 
 export type KeyValueStorage = {

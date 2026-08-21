@@ -40,7 +40,10 @@ export function summarizeProjectContextRoot(root: TodoistProjectContextTask): Pr
   };
 }
 
-export function buildProjectContextSnapshot(source: TodoistProjectContextSource): ProjectContextSnapshot {
+export function buildProjectContextSnapshot(
+  source: TodoistProjectContextSource,
+  detailLevel: "compact" | "deep" = "deep"
+): ProjectContextSnapshot {
   const rootMetadata = parseProjectMetadata(source.root.description);
   const candidates = [
     ...source.activeTasks.map((task) => toCandidate(task, false)),
@@ -71,6 +74,7 @@ export function buildProjectContextSnapshot(source: TodoistProjectContextSource)
     .find((checkpoint): checkpoint is string => Boolean(checkpoint)) ?? null;
   return {
     schemaVersion: 1,
+    detailLevel,
     id: source.root.id,
     title: source.root.content,
     url: taskUrl(source.root.id),

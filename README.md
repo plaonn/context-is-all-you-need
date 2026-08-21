@@ -17,8 +17,9 @@ npm run check
 
 The extension asks for:
 
-1. The Todoist section ID that bounds project-context roots.
-2. An explicit `Connect Todoist` action.
+1. A local Context label, such as `Work` or `Personal`.
+2. The Todoist section ID that bounds that Context's project roots.
+3. An explicit `Connect Todoist` action.
 
 On Connect, the extension registers or reuses its own Todoist public client for the current unpacked-extension redirect identity through `https://api.todoist.com/oauth/register`, sends consent through `https://app.todoist.com/oauth/authorize`, and exchanges/refreshes through `https://api.todoist.com/oauth/access_token`. It keeps resource reads on the Todoist API origin, requests only `data:read`, uses `chrome.identity.launchWebAuthFlow` and PKCE, and never stores or requires a client secret. The Todoist metadata issuer is recorded separately; endpoint URLs are not synthesized from it.
 
@@ -26,6 +27,6 @@ Todoist access and refresh credentials remain in Chrome session storage; the non
 
 ## Semantics and boundaries
 
-The accepted MMCP Project context v1 semantics are preserved in the browser-owned core: configurable section discovery, top-level root filtering, bounded 50-item pagination, direct-child active/recent-completed reads, goal/workstream metadata, lifecycle lanes, salience suppression, presentation-only contextual lineage, and 60-second fresh / 5-minute stale-while-revalidate cache behavior. See [docs/SPEC.md](docs/SPEC.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), and [docs/decisions/0001-browser-native-public-client.md](docs/decisions/0001-browser-native-public-client.md).
+The accepted Project context v1 semantics are preserved in the browser-owned core and now sit beneath a Context board: one local Context maps to one Todoist section, all discovered project roots are shown together, and each card exposes a compact connected workstream projection. Existing one-section configuration migrates locally without another OAuth registration. Project history and recent completed nodes load only when a card is expanded; compact reads, per-Context/project caches, bounded concurrency, freshness, and isolated partial failures keep the first board read bounded. See [docs/SPEC.md](docs/SPEC.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), and [docs/decisions/0002-preserve-project-context-v1.md](docs/decisions/0002-preserve-project-context-v1.md).
 
-The acceptance ledger separates local checks from live provider/browser evidence. The current ledger records clean unpacked-extension success through DCR → consent → PKCE token exchange → authenticated first GET and UI render without a DevTools `window.fetch` wrapper; standalone parity/cutover is ready. Non-blocking UX improvements remain a separate product follow-up.
+The acceptance ledger separates local checks from live provider/browser evidence. It records the prior clean unpacked-extension success through DCR → consent → PKCE token exchange → authenticated first GET and baseline Project context UI without a DevTools `window.fetch` wrapper, plus synthetic multi-Context board and desktop/narrow visual evidence for this revision. The new board's authenticated provider/browser acceptance is not inferred from those baseline facts.

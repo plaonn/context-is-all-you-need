@@ -12,6 +12,8 @@ const TODOIST_API_BASE = "https://api.todoist.com/api/v1/";
 const PAGE_LIMIT = 50;
 const SECTION_MAX_PAGES = 4;
 const ACTIVE_MAX_PAGES = 4;
+const COMPACT_ACTIVE_MAX_PAGES = 2;
+const COMPACT_COMPLETED_MAX_PAGES = 1;
 const COMPLETED_MAX_PAGES = 3;
 const COMPLETED_LOOKBACK_MS = 90 * 24 * 60 * 60 * 1_000;
 
@@ -50,6 +52,37 @@ export class TodoistApi implements ProjectContextReader {
         sectionTasksRead: page.items.length,
         rootTasksRead: roots.length,
         sectionTruncated: page.truncated
+      }
+    };
+  }
+
+  async readProjectContextCompact(rootTaskId: string, now = new Date()): Promise<TodoistProjectContextSource> {
+    const root = await this.readTask(rootTaskId);
+    const completedUntil = now.toISOString();
+    const completedSince = new Date(now.valueOf() - COMPLETED_LOOKBACK_MS).toISOString();
+    const active = await readBoundedPages(
+      (cursor) => this.readPage("tasks", { parent_id: rootTaskId }, "results", cursor),
+      COMPACT_ACTIVE_MAX_PAGES
+    );
+    const completed = await readBoundedPages(
+      (cursor) => this.readPage("tasks/completed/by_completion_date", {
+        parent_id: rootTaskId,
+        since: completedSince,
+        until: completedUntil
+      }, "items", cursor),
+      COMPACT_COMPLETED_MAX_PAGES
+    );
+    return {
+      root,
+      activeTasks: active.items.filter((task) => task.parentId === rootTaskId),
+      completedTasks: completed.items.filter((task) => task.parentId === rootTaskId && !task.isDeleted),
+      coverage: {
+        activePagesFetched: active.pagesFetched,
+        completedPagesFetched: completed.pagesFetched,
+        activeTruncated: active.truncated,
+        completedTruncated: completed.truncated,
+        completedSince,
+        completedUntil
       }
     };
   }

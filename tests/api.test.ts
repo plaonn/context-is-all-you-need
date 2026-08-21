@@ -34,6 +34,34 @@ describe("Todoist read-only API adapter", () => {
     expect(requests.some((request) => request.url.includes("parent_id=root"))).toBe(true);
   });
 
+  it("keeps the parallel-board project read compact with one recent completed page", async () => {
+    const requests: string[] = [];
+    const fetcher: typeof fetch = async (input, init) => {
+      expect(init?.method).toBe("GET");
+      const url = new URL(String(input));
+      requests.push(url.toString());
+      if (url.pathname.endsWith("/tasks/root")) {
+        return response(taskPayload("root", "* 🗂️ Root", null, "Project context v1:\nProject Goal: Goal"));
+      }
+      if (url.pathname.endsWith("/tasks") && url.searchParams.get("parent_id") === "root") {
+        return response({ results: [taskPayload("active", "Active", "root", "Project context v1:\nWorkstream: delivery\nSummary: Active")], next_cursor: null });
+      }
+      if (url.pathname.endsWith("/tasks/completed/by_completion_date")) {
+        return response({ items: [taskPayload("done", "Done", "root", "Project context v1:\nWorkstream: delivery\nSummary: Done", "2026-08-20T00:00:00.000Z")], next_cursor: null });
+      }
+      return new Response("unexpected endpoint", { status: 404 });
+    };
+    const api = new TodoistApi({ getAccessToken: async () => "access-fixture" }, fetcher);
+
+    const source = await api.readProjectContextCompact("root", new Date("2026-08-21T00:00:00.000Z"));
+
+    expect(source.activeTasks.map((task) => task.id)).toEqual(["active"]);
+    expect(source.completedTasks.map((task) => task.id)).toEqual(["done"]);
+    expect(source.coverage).toMatchObject({ completedPagesFetched: 1, completedTruncated: false });
+    expect(requests.every((url) => new URL(url).searchParams.get("limit") === "50" || url.endsWith("/tasks/root"))).toBe(true);
+    expect(requests.filter((url) => url.includes("tasks/completed/by_completion_date")).length).toBe(1);
+  });
+
   it("invokes an injected receiver-sensitive fetcher with the global receiver", async () => {
     let receiver: unknown;
     const fetcher = function (this: unknown, _input: RequestInfo | URL, _init?: RequestInit): Promise<Response> {

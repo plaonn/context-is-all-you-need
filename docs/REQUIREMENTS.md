@@ -10,15 +10,15 @@ Failure prevented: a viewer that looks independent but silently depends on MMCP,
 
 Checks: `tests/api.test.ts`, `tests/cache.test.ts`, `scripts/check-public-safety.mjs`, MV3 manifest, and manual browser load when safe authority exists.
 
-## R2 — Semantics and bounded freshness
+## R2 — Context board semantics and bounded freshness
 
-The projection preserves Project context v1 semantics: configurable section-boundary discovery, top-level dashboard-root filtering, bounded pagination, loose-task exclusion, goal and workstream registry, task summary/context predecessors/checkpoint, lifecycle-derived Now/Later/Blocked/Watching/Done, presentation-only lineage, salience suppression, and compact responsive line-and-box rendering. Cache freshness is explicit (`fresh`, `stale`, `expired`) with bounded stale-while-revalidate and single-flight reads.
+The projection preserves Project context v1 semantics beneath a multi-Context board: each local Context maps to one section; selected-context discovery shows all eligible project roots in parallel; compact project cards show goal/state, salient lifecycle nodes, connected workstream progression, and presentation-only lineage; expanded cards progressively load bounded deep history. Configurable section-boundary discovery, top-level dashboard-root filtering, bounded pagination, loose-task exclusion, goal and workstream registry, task summary/context predecessors/checkpoint, lifecycle-derived Now/Later/Blocked/Watching/Done, and salience suppression remain intact. Cache freshness is explicit (`fresh`, `stale`, `expired`) with bounded stale-while-revalidate, per-Context/project entries, bounded concurrency, isolated partial failures, and single-flight reads.
 
 Rationale: fast orientation is useful only when its scope and freshness are truthful.
 
-Failure prevented: a partial/truncated provider response being presented as a complete project, or lineage being mistaken for Todoist dependency/execution authority.
+Failure prevented: a partial/truncated provider response being presented as complete, all project detail being fetched synchronously before orientation, or lineage being mistaken for Todoist dependency/execution authority.
 
-Checks: `tests/projection.test.ts`, `tests/pagination.test.ts`, `tests/cache.test.ts`, `tests/renderer.test.ts`, and fixture review.
+Checks: `tests/config.test.ts`, `tests/projection.test.ts`, `tests/pagination.test.ts`, `tests/api.test.ts`, `tests/cache.test.ts`, `tests/renderer.test.ts`, and fixture review.
 
 ## R3 — Public privacy and least privilege
 
@@ -47,3 +47,7 @@ Checks: tracked docs and source layout; `npm run check`; clean public-safety sca
 Local contribution: complete for the initial standalone slice.
 
 Requirement state: `satisfied` for standalone acceptance. The user directly verified the clean unpacked-extension path after reload, without a DevTools fetch wrapper: canonical DCR/consent/PKCE token exchange, authenticated Todoist data reads, and project-context UI rendering all succeeded. Standalone cutover is `ready`; the MMCP-removal hold from this task is released, while any removal remains a separate authorized workstream. Non-blocking UX improvements are a separate product follow-up and do not change this Requirement state.
+
+## Context board revision state
+
+The multi-Context/parallel-board extension is locally implemented and covered by deterministic synthetic tests. The prior direct browser evidence applies to the accepted standalone OAuth/read path; it does not by itself claim fresh provider/browser acceptance of this new board surface. No new provider write, OAuth scope, server, or MMCP dependency was introduced.
