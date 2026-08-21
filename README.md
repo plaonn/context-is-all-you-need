@@ -18,11 +18,11 @@ npm run check
 The extension asks for:
 
 1. The Todoist section ID that bounds project-context roots.
-2. An HTTPS Todoist OAuth client metadata URL for a public client.
+2. An explicit `Connect Todoist` action.
 
-The metadata document must use `token_endpoint_auth_method: "none"`, request only `data:read`, and list the extension redirect URL shown by the setup page. The flow uses `chrome.identity.launchWebAuthFlow` and PKCE; no client secret is stored in this repository or required at runtime.
+On Connect, the extension registers or reuses its own Todoist public client for the current unpacked-extension redirect identity through Todoist Dynamic Client Registration. It requests only `data:read`, uses `chrome.identity.launchWebAuthFlow` and PKCE, and never stores or requires a client secret.
 
-Todoist credentials remain in Chrome session storage. The projected cache is also browser-local and stores only bounded viewer fields. No credential or personal task payload belongs in source control; synthetic public-safe fixtures are under `fixtures/`.
+Todoist access and refresh credentials remain in Chrome session storage; the non-secret client registration is kept in browser-local configuration for reuse. The projected cache is also browser-local and stores only bounded viewer fields. No credential or personal task payload belongs in source control; synthetic public-safe fixtures are under `fixtures/`.
 
 ## Semantics and boundaries
 

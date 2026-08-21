@@ -8,11 +8,13 @@ The visualization must be standalone and read-only. A browser extension cannot k
 
 ## Decision
 
-Use Todoist's public OAuth client metadata document plus PKCE. The user supplies an HTTPS metadata URL whose declared scope is `data:read` and whose redirect URI matches Chromium's generated extension redirect. The extension calls Todoist directly and stores only short-lived OAuth session material in `chrome.storage.session`.
+Use Todoist's unauthenticated Dynamic Client Registration endpoint to create a public client on explicit Connect, then use that client with PKCE. The registration requests only `data:read`, includes the authorization-code and refresh-token grants, uses `response_types: ["code"]` and `token_endpoint_auth_method: "none"`, and is bound to Chromium's generated extension redirect. The extension calls Todoist directly, stores only non-secret registration metadata in `chrome.storage.local`, and stores access/refresh session material in `chrome.storage.session`.
+
+Todoist's OAuth Client ID Metadata Document flow remains a supported alternative platform capability, but is not required or exposed by normal first-run setup.
 
 ## Consequences
 
-- No public client secret or application server is required.
-- The user must provision/choose the metadata document and stable extension redirect outside this repository; that is a setup dependency, not public repository truth.
+- No public client secret, user-hosted metadata document, or application server is required.
+- An unpacked extension identity change produces a new bounded registration on the next explicit Connect; the old registration is never silently reused for the new redirect identity.
 - OAuth actual-use remains unverified without safe local browser authority.
 - Provider client registration, production hosting, and store publication are out of scope.

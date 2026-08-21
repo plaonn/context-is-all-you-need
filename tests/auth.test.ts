@@ -1,36 +1,133 @@
 import { describe, expect, it } from "vitest";
-import { authorizationUrl, TodoistOAuthClient, validateConfig } from "../src/core/auth.js";
+import {
+  ensureTodoistClientRegistration,
+  TodoistOAuthClient,
+  authorizationUrl,
+  registerTodoistClient,
+  validateConfig
+} from "../src/core/auth.js";
 import { MemoryStorage } from "../src/core/storage.js";
-import type { OAuthConfig } from "../src/core/model.js";
+import { loadConfig, saveConfig } from "../src/extension/config.js";
+import type { OAuthClientRegistration, OAuthConfig } from "../src/core/model.js";
 
-const config: OAuthConfig = { clientId: "https://public.example/oauth/client.json", scope: "data:read", redirectPath: "todoist" };
+const redirectUri = "https://extension.chromiumapp.org/todoist";
+const config: OAuthConfig = {
+  clientId: "tdd_fixture_client",
+  scope: "data:read",
+  redirectPath: "todoist",
+  redirectUri
+};
+const identity = {
+  getRedirectURL: () => redirectUri,
+  launchWebAuthFlow: async ({ url }: { url: string }) => {
+    const authorization = new URL(url);
+    return `${redirectUri}?code=code-fixture&state=${authorization.searchParams.get("state")}`;
+  }
+};
 
 describe("Todoist public-client PKCE auth", () => {
   it("requests only data:read and includes state plus PKCE", () => {
-    const url = new URL(authorizationUrl(config, "https://extension.chromiumapp.org/todoist", "state-fixture", "challenge-fixture"));
+    const url = new URL(authorizationUrl(config, redirectUri, "state-fixture", "challenge-fixture"));
     expect(url.searchParams.get("client_id")).toBe(config.clientId);
     expect(url.searchParams.get("scope")).toBe("data:read");
     expect(url.searchParams.get("code_challenge_method")).toBe("S256");
     expect(url.searchParams.get("code_challenge")).toBe("challenge-fixture");
     expect(url.searchParams.get("state")).toBe("state-fixture");
     expect(url.searchParams.has("client_secret")).toBe(false);
+    expect(() => authorizationUrl(config, "https://other-extension.chromiumapp.org/todoist", "state-fixture", "challenge-fixture"))
+      .toThrow("redirect");
   });
 
-  it("rejects non-public client configuration", () => {
+  it("accepts a dynamically registered public ID and rejects unsafe configuration", () => {
+    expect(() => validateConfig(config)).not.toThrow();
+    expect(() => validateConfig({ ...config, clientId: "https://public.example/oauth/client.json" })).not.toThrow();
     expect(() => validateConfig({ ...config, clientId: "http://localhost/client.json" })).toThrow("HTTPS");
     expect(() => validateConfig({ ...config, scope: "data:read_write" as "data:read" })).toThrow("data:read");
+  });
+
+  it("registers the exact redirect as a public read-only client", async () => {
+    let request: RequestInit | undefined;
+    const registration = await registerTodoistClient(redirectUri, (async (_input, init) => {
+      request = init;
+      return registrationResponse();
+    }) as typeof fetch);
+    const body = JSON.parse(String(request?.body));
+    expect(request?.method).toBe("POST");
+    expect(body).toEqual({
+      client_name: "Context Is All You Need",
+      redirect_uris: [redirectUri],
+      scope: "data:read",
+      grant_types: ["authorization_code", "refresh_token"],
+      response_types: ["code"],
+      token_endpoint_auth_method: "none"
+    });
+    expect(registration).toEqual({ clientId: "tdd_fixture_client", redirectUri, registrationVersion: 1 });
+    expect(JSON.stringify(registration)).not.toContain("secret");
+  });
+
+  it("persists registration metadata and reuses it without another registration", async () => {
+    const localStorage = new MemoryStorage();
+    const registration = await ensureTodoistClientRegistration(null, identity, "todoist", async () => registrationResponse());
+    await saveConfig(localStorage, { sectionId: "section-fixture", registration });
+    const loaded = await loadConfig(localStorage);
+    let calls = 0;
+    const reused = await ensureTodoistClientRegistration(loaded?.registration, identity, "todoist", async () => {
+      calls += 1;
+      return registrationResponse();
+    });
+    expect(loaded?.registration).toEqual(registration);
+    expect(reused).toEqual(registration);
+    expect(calls).toBe(0);
+
+    await localStorage.set({ "project-context-config-v1": { sectionId: "section-fixture", registration: { ...registration, client_secret: "synthetic-secret" } } });
+    const sanitized = await loadConfig(localStorage);
+    expect(sanitized?.registration).toEqual(registration);
+    expect(JSON.stringify(sanitized)).not.toContain("synthetic-secret");
+  });
+
+  it("re-registers once when the unpacked extension redirect identity changes", async () => {
+    const existing: OAuthClientRegistration = { ...registrationFixture(), redirectUri: "https://old-extension.chromiumapp.org/todoist" };
+    let calls = 0;
+    const next = await ensureTodoistClientRegistration(existing, {
+      getRedirectURL: () => redirectUri,
+      launchWebAuthFlow: identity.launchWebAuthFlow
+    }, "todoist", async () => {
+      calls += 1;
+      return registrationResponse();
+    });
+    expect(calls).toBe(1);
+    expect(next.redirectUri).toBe(redirectUri);
+  });
+
+  it("coalesces concurrent explicit registration attempts", async () => {
+    let calls = 0;
+    let resolveResponse: ((response: Response) => void) | undefined;
+    const fetcher = (async () => {
+      calls += 1;
+      return new Promise<Response>((resolve) => { resolveResponse = resolve; });
+    }) as typeof fetch;
+    const first = ensureTodoistClientRegistration(null, identity, "todoist", fetcher);
+    const second = ensureTodoistClientRegistration(null, identity, "todoist", fetcher);
+    await Promise.resolve();
+    expect(calls).toBe(1);
+    resolveResponse?.(registrationResponse());
+    await expect(Promise.all([first, second])).resolves.toHaveLength(2);
+  });
+
+  it("surfaces rate limits, provider failures, and malformed public metadata", async () => {
+    await expect(registerTodoistClient(redirectUri, async () => new Response("", { status: 429 })))
+      .rejects.toMatchObject({ code: "registration_rate_limited" });
+    await expect(registerTodoistClient(redirectUri, async () => new Response("", { status: 503 })))
+      .rejects.toMatchObject({ code: "registration_failed" });
+    await expect(registerTodoistClient(redirectUri, async () => new Response(JSON.stringify({ client_id: "tdd_fixture_client" }), { status: 201 })))
+      .rejects.toMatchObject({ code: "invalid_response" });
+    await expect(registerTodoistClient(redirectUri, async () => new Response(JSON.stringify({ ...registrationResponseBody(), client_secret: "must-not-be-stored" }), { status: 201 })))
+      .rejects.toMatchObject({ code: "invalid_response" });
   });
 
   it("exchanges code without a client secret and stores only session credentials", async () => {
     const storage = new MemoryStorage();
     let exchangeBody = "";
-    const identity = {
-      getRedirectURL: () => "https://extension.chromiumapp.org/todoist",
-      launchWebAuthFlow: async ({ url }: { url: string }) => {
-        const authorization = new URL(url);
-        return `https://extension.chromiumapp.org/todoist?code=code-fixture&state=${authorization.searchParams.get("state")}`;
-      }
-    };
     const client = new TodoistOAuthClient(config, storage, identity, (async (_input, init) => {
       exchangeBody = String(init?.body ?? "");
       return new Response(JSON.stringify({ access_token: "access-fixture", refresh_token: "refresh-fixture", expires_in: 3600, scope: "data:read" }), { status: 200 });
@@ -42,4 +139,67 @@ describe("Todoist public-client PKCE auth", () => {
     expect(await client.getAccessToken()).toBe("access-fixture");
     expect(JSON.stringify(await storage.get("todoist-oauth-session-v1"))).not.toContain("client_secret");
   });
+
+  it("retains the current refresh token when a successful retry omits a replacement", async () => {
+    const storage = new MemoryStorage();
+    await storage.set({ "todoist-oauth-session-v1": { accessToken: "expired-access", refreshToken: "refresh-original", expiresAt: 1, scope: "data:read" } });
+    const client = new TodoistOAuthClient(config, storage, identity, async () => new Response(JSON.stringify({ access_token: "access-refreshed", expires_in: 3600, scope: "data:read" }), { status: 200 }), () => 1_000_000);
+    await expect(client.getAccessToken(true)).resolves.toBe("access-refreshed");
+    expect((await storage.get<{ refreshToken: string }>("todoist-oauth-session-v1"))?.refreshToken).toBe("refresh-original");
+  });
+
+  it("fails before authorization when the stored redirect binding is stale", async () => {
+    let launched = false;
+    const client = new TodoistOAuthClient({ ...config, redirectUri: "https://old-extension.chromiumapp.org/todoist" }, new MemoryStorage(), {
+      getRedirectURL: () => redirectUri,
+      launchWebAuthFlow: async () => { launched = true; return undefined; }
+    });
+    await expect(client.connect()).rejects.toMatchObject({ code: "redirect_mismatch" });
+    expect(launched).toBe(false);
+  });
+
+  it("turns provider client-identity errors into an actionable reconnect error", async () => {
+    const callbackIdentity = {
+      getRedirectURL: () => redirectUri,
+      launchWebAuthFlow: async () => `${redirectUri}?error=invalid_client`
+    };
+    await expect(new TodoistOAuthClient(config, new MemoryStorage(), callbackIdentity).connect())
+      .rejects.toMatchObject({ code: "client_mismatch" });
+    const tokenIdentity = {
+      getRedirectURL: () => redirectUri,
+      launchWebAuthFlow: identity.launchWebAuthFlow
+    };
+    await expect(new TodoistOAuthClient(config, new MemoryStorage(), tokenIdentity, async () => new Response(JSON.stringify({ error: "incorrect_application_credentials" }), { status: 400 })).connect())
+      .rejects.toMatchObject({ code: "client_mismatch" });
+  });
+
+  it("disconnects session tokens while preserving local registration metadata", async () => {
+    const sessionStorage = new MemoryStorage();
+    const localStorage = new MemoryStorage();
+    const registration = registrationFixture();
+    await saveConfig(localStorage, { sectionId: "section-fixture", registration });
+    await sessionStorage.set({ "todoist-oauth-session-v1": { accessToken: "access-fixture", refreshToken: "refresh-fixture", expiresAt: 2_000_000, scope: "data:read" } });
+    await new TodoistOAuthClient(config, sessionStorage, identity).disconnect();
+    expect(await sessionStorage.get("todoist-oauth-session-v1")).toBeUndefined();
+    expect((await loadConfig(localStorage))?.registration).toEqual(registration);
+  });
 });
+
+function registrationFixture(): OAuthClientRegistration {
+  return { clientId: "tdd_fixture_client", redirectUri, registrationVersion: 1 };
+}
+
+function registrationResponseBody(): Record<string, unknown> {
+  return {
+    client_id: "tdd_fixture_client",
+    redirect_uris: [redirectUri],
+    scope: "data:read",
+    grant_types: ["authorization_code", "refresh_token"],
+    response_types: ["code"],
+    token_endpoint_auth_method: "none"
+  };
+}
+
+function registrationResponse(): Response {
+  return new Response(JSON.stringify(registrationResponseBody()), { status: 201 });
+}

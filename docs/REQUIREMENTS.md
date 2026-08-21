@@ -22,7 +22,7 @@ Checks: `tests/projection.test.ts`, `tests/pagination.test.ts`, `tests/cache.tes
 
 ## R3 — Public privacy and least privilege
 
-Public repository truth contains no credentials, personal data, private prototype material, or runtime state. Browser authorization uses a public Todoist OAuth client with PKCE and the least-privilege `data:read` scope; no client secret is present in public source.
+Public repository truth contains no credentials, personal data, private prototype material, or runtime state. Browser authorization uses a dynamically registered public Todoist OAuth client with PKCE and the least-privilege `data:read` scope; the registration is bound to the current Chromium redirect identity, and no client secret is present in public source or browser configuration.
 
 Rationale: a public extension cannot safely hold a symmetric client secret and does not need write authority for a read-only view.
 

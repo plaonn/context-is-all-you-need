@@ -1,17 +1,15 @@
 import { TodoistApi } from "../core/api.js";
-import { TodoistOAuthClient, OAuthError } from "../core/auth.js";
+import { ensureTodoistClientRegistration, TodoistOAuthClient, OAuthError } from "../core/auth.js";
 import { ProjectContextCache, ProjectContextCacheError, PROJECT_CONTEXT_CACHE_KEY } from "../core/cache.js";
 import { renderError, renderSelection } from "../core/renderer.js";
 import { ChromeStorage } from "../core/storage.js";
-import { loadConfig, saveConfig, type UserConfig } from "./config.js";
+import { DEFAULT_CONFIG, loadConfig, saveConfig, type UserConfig } from "./config.js";
 
 const localStorage = new ChromeStorage(chrome.storage.local);
 const sessionStorage = new ChromeStorage(chrome.storage.session);
 const setup = document.querySelector<HTMLElement>("#setup")!;
 const setupForm = document.querySelector<HTMLFormElement>("#setup-form")!;
 const sectionInput = document.querySelector<HTMLInputElement>("#section-id")!;
-const clientIdInput = document.querySelector<HTMLInputElement>("#client-id")!;
-const redirectOutput = document.querySelector<HTMLElement>("#redirect-uri")!;
 const dashboard = document.querySelector<HTMLElement>("#dashboard")!;
 const status = document.querySelector<HTMLElement>("#status")!;
 const refreshButton = document.querySelector<HTMLButtonElement>("#refresh")!;
@@ -27,10 +25,13 @@ let selectedRootId: string | undefined;
 void boot();
 
 async function boot(): Promise<void> {
-  redirectOutput.textContent = chrome.identity.getRedirectURL("todoist");
   config = await loadConfig(localStorage);
-  if (!config) {
+  if (!config?.registration) {
     showSetup();
+    return;
+  }
+  if (config.registration.redirectUri !== chrome.identity.getRedirectURL("todoist")) {
+    showSetup("This unpacked extension identity changed. Click Connect Todoist to register it again.");
     return;
   }
   configure(config);
@@ -43,7 +44,17 @@ async function boot(): Promise<void> {
 
 function configure(next: UserConfig): void {
   config = next;
-  auth = new TodoistOAuthClient(config, sessionStorage, chrome.identity);
+  if (!next.registration) {
+    auth = null;
+    cache = null;
+    return;
+  }
+  auth = new TodoistOAuthClient({
+    clientId: next.registration.clientId,
+    scope: DEFAULT_CONFIG.scope,
+    redirectPath: DEFAULT_CONFIG.redirectPath,
+    redirectUri: next.registration.redirectUri
+  }, sessionStorage, chrome.identity);
   const api = new TodoistApi(auth);
   cache = new ProjectContextCache(api, config.sectionId, {
     storage: sessionStorage,
@@ -71,19 +82,26 @@ disconnectButton.addEventListener("click", () => {
 
 async function saveAndConnect(): Promise<void> {
   const sectionId = sectionInput.value.trim();
-  const clientId = clientIdInput.value.trim();
-  if (!sectionId || !clientId) {
-    setStatus("Section ID and public client metadata URL are required.", "error");
+  if (!sectionId) {
+    setStatus("A Todoist section ID is required.", "error");
     return;
   }
   try {
-    const saved = await saveConfig(localStorage, { sectionId, clientId });
+    const registration = await ensureTodoistClientRegistration(config?.registration, chrome.identity, DEFAULT_CONFIG.redirectPath);
+    const saved = await saveConfig(localStorage, { sectionId, registration });
     configure(saved);
     setStatus("Opening Todoist authorization…", "info");
     await auth!.connect();
     hideSetup();
     await readDashboard(true);
   } catch (error) {
+    if (error instanceof OAuthError && error.code === "client_mismatch") {
+      config = await saveConfig(localStorage, { sectionId, registration: null });
+      auth = null;
+      cache = null;
+      showSetup("Todoist rejected this client registration. The saved registration was cleared; click Connect Todoist to register this installation again.");
+      return;
+    }
     setStatus(error instanceof OAuthError ? error.message : "Could not connect to Todoist.", "error");
   }
 }
@@ -127,7 +145,6 @@ function showSetup(message?: string): void {
   dashboard.hidden = true;
   if (config) {
     sectionInput.value = config.sectionId;
-    clientIdInput.value = config.clientId;
   }
   if (message) setStatus(message, "info");
 }

@@ -9,12 +9,12 @@
 ## Next bounded validation
 
 - Load the unpacked extension in an authorized local Chromium profile.
-- Use a safe Todoist public-client metadata document and read-only account authority.
+- Use a read-only Todoist account authority through the extension's Dynamic Client Registration flow.
 - Verify section discovery, selected projection, cache freshness transitions, canonical links, and absence of controls that mutate source.
 - Record provider/browser evidence and reconcile whether standalone parity/cutover is `ready` or `not-ready`.
 
 ## Reserved future decisions
 
-- Any hosted public metadata document or stable extension key/redirect provisioning.
+- Stable extension key/redirect provisioning or explicit use of Todoist's alternative hosted metadata-document flow.
 - Store publication, production launch, user analytics, additional Todoist scopes, or any provider write.
 - Cross-repository integration or changes to MMCP.

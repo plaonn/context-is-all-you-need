@@ -22,15 +22,11 @@
       <section id="setup" class="setup-card" hidden>
         <p class="eyebrow">READ-ONLY AUTH SETUP</p>
         <h1>Connect your Todoist context</h1>
-        <p>Use a public Todoist OAuth client metadata URL and the exact section that bounds project roots. This extension requests only <code>data:read</code>; it has no client secret and never mutates Todoist.</p>
+        <p>Choose the section that bounds project roots. When you connect, this extension creates and reuses its own public Todoist client for this browser installation. It requests only <code>data:read</code>; it has no client secret and never mutates Todoist.</p>
         <form id="setup-form">
           <label for="section-id">Todoist section ID</label>
           <input id="section-id" name="section-id" autocomplete="off" required placeholder="section id">
-          <label for="client-id">OAuth client metadata URL</label>
-          <input id="client-id" name="client-id" type="url" autocomplete="off" required placeholder="https://example.com/oauth/client.json">
-          <p class="help">The metadata document must declare <code>token_endpoint_auth_method: none</code>, <code>data:read</code>, and this redirect URL:</p>
-          <code id="redirect-uri" class="redirect-uri"></code>
-          <button type="submit" class="primary">Connect read-only</button>
+          <button type="submit" class="primary">Connect Todoist</button>
         </form>
       </section>
       <section id="settings-panel" class="settings-panel" hidden>

@@ -129,11 +129,21 @@ export type KeyValueStorage = {
   remove(keys: string | string[]): Promise<void>;
 };
 
+export const OAUTH_CLIENT_REGISTRATION_VERSION = 1 as const;
+
+export type OAuthClientRegistration = {
+  clientId: string;
+  redirectUri: string;
+  registrationVersion: typeof OAUTH_CLIENT_REGISTRATION_VERSION;
+};
+
 export type OAuthConfig = {
-  /** HTTPS URL of a public Todoist OAuth client metadata document. */
+  /** Dynamic Todoist public client ID, or the supported historical metadata URL form. */
   clientId: string;
   scope: "data:read";
   redirectPath: string;
+  /** Redirect URI bound to the client registration at authorization time. */
+  redirectUri: string;
 };
 
 export type OAuthSession = {

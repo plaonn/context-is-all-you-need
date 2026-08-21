@@ -32,7 +32,6 @@ form { display: grid; gap: .55rem; margin-top: 1.25rem; }
 label { font-weight: 700; font-size: .85rem; }
 input { border: 1px solid var(--line); border-radius: .7rem; padding: .7rem .8rem; background: #fff; }
 .help { margin: .7rem 0 0; font-size: .82rem; }
-.redirect-uri { display: block; overflow-wrap: anywhere; padding: .7rem; background: var(--accent-soft); border-radius: .7rem; color: var(--accent); font-size: .78rem; }
 .primary { margin-top: .7rem; border-color: var(--accent); background: var(--accent); color: #fff; }
 .settings-panel { margin: 1rem 0; font-size: .85rem; color: var(--muted); }
 .settings-panel p { margin: .35rem 0; }
