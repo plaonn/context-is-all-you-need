@@ -17,5 +17,5 @@ Todoist's OAuth Client ID Metadata Document flow remains a supported alternative
 - No public client secret, user-hosted metadata document, or application server is required.
 - An unpacked extension identity change produces a new bounded registration on the next explicit Connect; the old registration is never silently reused for the new redirect identity.
 - Token fetch rejection, HTTP OAuth error, callback redirect/error, and client-registration mismatch remain separate sanitized diagnostics.
-- The acceptance ledger records prior negative dogfood at token exchange; post-fix positive browser acceptance remains unresolved until an authenticated first GET is directly observed.
+- The acceptance ledger records a wrapper-assisted dogfood success through token exchange, authenticated task reads, and UI render. Clean production-path acceptance remains unresolved until the same flow succeeds without the DevTools `window.fetch` wrapper.
 - Provider client registration, production hosting, and store publication are out of scope.

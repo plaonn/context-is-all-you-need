@@ -94,6 +94,18 @@ describe("Todoist public-client PKCE auth", () => {
     expect(JSON.stringify(registration)).not.toContain("secret");
   });
 
+  it("invokes the injected registration fetcher with the global receiver", async () => {
+    let receiver: unknown;
+    const fetcher = function (this: unknown, _input: RequestInfo | URL, _init?: RequestInit): Promise<Response> {
+      receiver = this;
+      if (this !== globalThis) return Promise.reject(new Error("wrong fetch receiver"));
+      return Promise.resolve(registrationResponse());
+    } as typeof fetch;
+
+    await expect(registerTodoistClient(redirectUri, fetcher)).resolves.toEqual(registrationFixture());
+    expect(receiver).toBe(globalThis);
+  });
+
   it("persists registration metadata and reuses it without another registration", async () => {
     const localStorage = new MemoryStorage();
     const registration = await ensureTodoistClientRegistration(null, identity, "todoist", async () => registrationResponse());
@@ -203,6 +215,19 @@ describe("Todoist public-client PKCE auth", () => {
     expect(exchangeBody).not.toContain("client_secret");
     expect(await client.getAccessToken()).toBe("access-fixture");
     expect(JSON.stringify(await storage.get("todoist-oauth-session-v1"))).not.toContain("client_secret");
+  });
+
+  it("invokes the injected token fetcher with the global receiver", async () => {
+    let receiver: unknown;
+    const fetcher = function (this: unknown, _input: RequestInfo | URL, _init?: RequestInit): Promise<Response> {
+      receiver = this;
+      if (this !== globalThis) return Promise.reject(new Error("wrong fetch receiver"));
+      return Promise.resolve(new Response(JSON.stringify({ access_token: "access-fixture", expires_in: 3600, scope: "data:read" }), { status: 200 }));
+    } as typeof fetch;
+    const client = new TodoistOAuthClient(config, new MemoryStorage(), identity, fetcher, () => 1_000_000);
+
+    await expect(client.connect()).resolves.toBeUndefined();
+    expect(receiver).toBe(globalThis);
   });
 
   it("retains the current refresh token when a successful retry omits a replacement", async () => {

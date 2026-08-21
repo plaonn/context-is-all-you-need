@@ -22,7 +22,7 @@ Verified 2026-08-21 before binding implementation details, including a direct re
 
 Implementation consequence: `src/core/auth.ts` uses the exact documented endpoint constants above. Registration schema version 3 invalidates the previous issuer-derived version 2 and any older/mixed endpoint binding, so an unpacked extension does not send a client registered against the old routing to the new flow. The client derives the current redirect identity on explicit Connect, reuses only a fully matching registration, registers a bounded replacement after redirect drift, requests only `data:read`, sends PKCE parameters, and never models a client secret. `src/core/api.ts` remains on the Todoist resource API and calls it directly with GET-only reads and bounded cursors.
 
-Token failures are sanitized by class: a fetch rejection is a network diagnostic, an HTTP OAuth response is reported with status and an allowlisted OAuth error code, and client-identity errors request a fresh registration. Response descriptions and credential material are never surfaced.
+Token failures are sanitized by class: a fetch rejection is a network diagnostic, an HTTP OAuth response is reported with status and an allowlisted OAuth error code, and client-identity errors request a fresh registration. `src/core/transport.ts` invokes the fetch-like dependency with the global receiver, preventing native `Window.fetch` binding errors while preserving injected fetcher tests. Response descriptions and credential material are never surfaced.
 
 ## Chromium
 

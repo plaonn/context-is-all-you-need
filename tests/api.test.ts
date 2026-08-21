@@ -33,6 +33,19 @@ describe("Todoist read-only API adapter", () => {
     expect(requests.some((request) => request.url.includes("limit=50"))).toBe(true);
     expect(requests.some((request) => request.url.includes("parent_id=root"))).toBe(true);
   });
+
+  it("invokes an injected receiver-sensitive fetcher with the global receiver", async () => {
+    let receiver: unknown;
+    const fetcher = function (this: unknown, _input: RequestInfo | URL, _init?: RequestInit): Promise<Response> {
+      receiver = this;
+      if (this !== globalThis) return Promise.reject(new Error("wrong fetch receiver"));
+      return Promise.resolve(response({ results: [], next_cursor: null }));
+    } as typeof fetch;
+    const api = new TodoistApi({ getAccessToken: async () => "access-fixture" }, fetcher);
+
+    await expect(api.readProjectContextRoots("section-1")).resolves.toMatchObject({ roots: [] });
+    expect(receiver).toBe(globalThis);
+  });
 });
 
 function response(value: unknown): Response {

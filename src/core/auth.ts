@@ -9,6 +9,7 @@ import {
   type OAuthConfig,
   type OAuthSession
 } from "./model.js";
+import { createFetchTransport, type Fetcher, type FetchTransport } from "./transport.js";
 
 const SESSION_KEY = "todoist-oauth-session-v1";
 const PENDING_KEY = "todoist-oauth-pending-v1";
@@ -61,7 +62,7 @@ export async function ensureTodoistClientRegistration(
   existing: OAuthClientRegistration | null | undefined,
   identity: AuthIdentity,
   redirectPath: string,
-  fetcher: typeof fetch = fetch
+  fetcher: Fetcher = globalThis.fetch
 ): Promise<OAuthClientRegistration> {
   const redirectUri = identity.getRedirectURL(redirectPath);
   const stored = normalizeOAuthClientRegistration(existing);
@@ -79,15 +80,16 @@ export async function ensureTodoistClientRegistration(
 
 export async function registerTodoistClient(
   redirectUri: string,
-  fetcher: typeof fetch = fetch
+  fetcher: Fetcher = globalThis.fetch
 ): Promise<OAuthClientRegistration> {
   if (!isValidRedirectUri(redirectUri)) {
     throw new OAuthError("invalid_config", "Todoist redirect identity was not a valid HTTPS URL");
   }
 
+  const transport = createFetchTransport(fetcher);
   let response: Response;
   try {
-    response = await fetcher(REGISTRATION_ENDPOINT, {
+    response = await transport.request(REGISTRATION_ENDPOINT, {
       method: "POST",
       headers: { Accept: "application/json", "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -119,13 +121,17 @@ export async function registerTodoistClient(
 }
 
 export class TodoistOAuthClient {
+  private readonly transport: FetchTransport;
+
   constructor(
     private readonly config: OAuthConfig,
     private readonly storage: KeyValueStorage,
     private readonly identity: AuthIdentity,
-    private readonly fetcher: typeof fetch = fetch,
+    fetcher: Fetcher = globalThis.fetch,
     private readonly now: () => number = Date.now
-  ) {}
+  ) {
+    this.transport = createFetchTransport(fetcher);
+  }
 
   async connect(): Promise<void> {
     validateConfig(this.config);
@@ -215,7 +221,7 @@ export class TodoistOAuthClient {
   private async tokenRequest(values: Record<string, string>, fallbackRefreshToken: string | null = null): Promise<OAuthSession> {
     let response: Response;
     try {
-      response = await this.fetcher(TOKEN_ENDPOINT, {
+      response = await this.transport.request(TOKEN_ENDPOINT, {
         method: "POST",
         headers: { Accept: "application/json", "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams(values).toString()

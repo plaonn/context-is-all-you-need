@@ -20,7 +20,7 @@ Chromium full tab / optional toolbar action
 - `src/core/metadata.ts`, `projection.ts`, and `model.ts` own public-safe Project context v1 semantics.
 - `src/core/pagination.ts` owns cursor traversal and explicit bounded coverage.
 - `src/core/api.ts` owns the replaceable Todoist GET-only adapter and never imports MMCP.
-- `src/core/auth.ts` owns Todoist Dynamic Client Registration, public-client PKCE, redirect binding, state verification, token exchange, and safe errors; it has no client-secret field.
+- `src/core/auth.ts` owns Todoist Dynamic Client Registration, public-client PKCE, redirect binding, state verification, token exchange, and safe errors; it has no client-secret field. `src/core/transport.ts` supplies a receiver-neutral fetch transport so native global fetch is never invoked as a class member while injected fetchers remain testable.
 - `src/core/cache.ts` owns browser-local projected cache and single-flight/SWR behavior.
 - `src/core/renderer.ts` owns escaped presentation-only HTML; links point back to canonical Todoist.
 - `src/extension/` owns MV3 page wiring and optional toolbar action.

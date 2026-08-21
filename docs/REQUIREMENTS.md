@@ -46,4 +46,4 @@ Checks: tracked docs and source layout; `npm run check`; clean public-safety sca
 
 Local contribution: complete for the initial standalone slice.
 
-Requirement state: `not-ready` for standalone acceptance until the canonical DCR/consent/PKCE token exchange and authenticated first GET are directly observed. Local fixture/auth integration evidence is useful for regression coverage but does not satisfy the live provider/browser gate. No MMCP removal is permitted while this state remains `not-ready`.
+Requirement state: `not-ready` for standalone acceptance until the canonical DCR/consent/PKCE token exchange and authenticated first GET are directly observed on the clean production path. The user has supplied wrapper-assisted evidence that token exchange, authenticated reads, and UI render work; this is provider/browser evidence but does not yet prove the native production fetch path. No MMCP removal is permitted while this state remains `not-ready`.

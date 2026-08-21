@@ -1,5 +1,6 @@
 import { readBoundedPages } from "./pagination.js";
 import { isProjectDashboardRoot } from "./projection.js";
+import { createFetchTransport, type Fetcher, type FetchTransport } from "./transport.js";
 import type {
   ProjectContextReader,
   TodoistProjectContextRootDiscovery,
@@ -25,11 +26,15 @@ export class TodoistApiError extends Error {
 }
 
 export class TodoistApi implements ProjectContextReader {
+  private readonly transport: FetchTransport;
+
   constructor(
     private readonly tokenProvider: AccessTokenProvider,
-    private readonly fetcher: typeof fetch = fetch,
+    fetcher: Fetcher = globalThis.fetch,
     private readonly apiBase = TODOIST_API_BASE
-  ) {}
+  ) {
+    this.transport = createFetchTransport(fetcher);
+  }
 
   async readProjectContextRoots(sectionId: string): Promise<TodoistProjectContextRootDiscovery> {
     const page = await readBoundedPages(
@@ -111,7 +116,7 @@ export class TodoistApi implements ProjectContextReader {
       for (const [key, value] of Object.entries(parameters)) url.searchParams.set(key, value);
       let response: Response;
       try {
-        response = await this.fetcher(url, {
+        response = await this.transport.request(url, {
           method: "GET",
           headers: { Accept: "application/json", Authorization: `Bearer ${token}` }
         });
