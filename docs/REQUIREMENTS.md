@@ -32,7 +32,7 @@ Checks: `tests/auth.test.ts`, `scripts/check-public-safety.mjs`, session-only to
 
 ## R4 — Maintainable public bootstrap
 
-The repository contains durable instructions, README, requirements, specification/architecture, roadmap, decision records, task mapping, build/test tooling, CI, fixtures, and a replaceable provider/auth/cache/projection structure.
+The repository contains durable instructions, README, requirements, specification/architecture, roadmap, decision records, task mapping, build/test tooling, fixtures, and a replaceable provider/auth/cache/projection structure.
 
 Checks: tracked docs and source layout; `npm run check`; clean public-safety scan.
 

@@ -3,7 +3,7 @@
 ## Bootstrap complete
 
 - Extract public-safe Project context v1 semantics from the accepted MMCP prototype.
-- Establish the standalone MV3 page/action, GET-only Todoist adapter, PKCE auth seam, cache, renderer, fixtures, tests, CI, and privacy scan.
+- Establish the standalone MV3 page/action, GET-only Todoist adapter, PKCE auth seam, cache, renderer, fixtures, tests, and privacy scan.
 - Document browser/provider boundaries and preserve actual-use evidence as separate from local delivery.
 
 ## Next bounded validation
