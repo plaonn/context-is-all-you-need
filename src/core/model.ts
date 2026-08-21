@@ -57,6 +57,44 @@ export type ProjectContextNode = {
   completedAt: string | null;
   blocker: string | null;
   resume: string | null;
+  /** Optional bounded exception/decision projection; never an authority signal. */
+  attention?: ProjectContextAttention | null;
+};
+
+export type ProjectContextAttentionKind = "blocked" | "decision" | "watching";
+export type ProjectContextAttentionSalience = "high" | "low";
+
+/**
+ * Resume-critical fields copied from an existing bounded exception packet.
+ * These values are presentation-only and do not grant approval or execution authority.
+ */
+export type ProjectContextAttention = {
+  kind: ProjectContextAttentionKind;
+  salience: ProjectContextAttentionSalience;
+  blockedOn: string | null;
+  whyWorkerCannotDecide: string | null;
+  decisionOwner: string | null;
+  recommendation: string | null;
+  alternatives: string | null;
+  safeState: string | null;
+  independentWork: string | null;
+  resumeCondition: string | null;
+  evidence: string | null;
+};
+
+/** Compact card-level attention summary. Full fields remain behind expansion. */
+export type ProjectContextAttentionSummary = {
+  nodeId: string;
+  title: string;
+  url: string;
+  kind: ProjectContextAttentionKind;
+  salience: ProjectContextAttentionSalience;
+  attentionCount: number;
+  blockedOn: string | null;
+  whyWorkerCannotDecide: string | null;
+  decisionOwner: string | null;
+  recommendation: string | null;
+  resumeCondition: string | null;
 };
 
 export type ProjectContextGoalStatus = "configured" | "unconfigured";
@@ -85,6 +123,7 @@ export type ProjectContextSnapshot = {
   goalStatus: ProjectContextGoalStatus;
   lanes: ProjectContextLane[];
   nextCheckpoint: string | null;
+  attention?: ProjectContextAttentionSummary | null;
   coverage: TodoistProjectContextCoverage & {
     activeTasksRead: number;
     completedTasksRead: number;

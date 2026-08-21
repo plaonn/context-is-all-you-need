@@ -45,9 +45,34 @@ Checkpoint: Dry-run disposition recorded
 
 `Context Predecessors` is presentation-only lineage. It is not a Todoist dependency, claim, scheduler input, execution order, or completion authority. Unknown fields and versions are ignored.
 
+### Bounded attention packet
+
+Task descriptions may also carry the existing bounded exception/decision fields:
+
+```text
+Blocked on: Receiver contract
+Why worker cannot decide: Authority is not present in current evidence
+Decision owner: ChatGPT
+Recommended safe/default path: Preserve the read-only adapter
+Alternatives: Wait for owner confirmation
+Safe state preserved: No writes attempted
+Independent work completed: Local validation
+Resume condition: A durable decision is published
+Evidence/provenance: Bounded source reference
+```
+
+These fields are optional, individually bounded, and presentation-only. The board
+does not infer a decision owner, approval, execution order, or authority when a
+field is missing. Material `codex-blocked` or explicitly populated decision
+packets receive high-salience compact attention; passive `codex-watching` keeps
+lower salience and its resume condition. Completed, resolved, obsolete, or
+superseded residue is not promoted to attention. Full resume-critical fields are
+shown only after bounded project expansion, while compact cards show where, why,
+owner when explicitly supplied, and the recommended next path when available.
+
 ## Lifecycle and salience
 
-`codex-now`, `codex-candidate`/`codex-managed`, `codex-blocked`, and `codex-watching` derive Now, Later, Blocked, and Watching. Completed source items derive Done. Nodes referenced by lineage remain visible; current-status nodes remain visible; metadata-free loose nodes and maintenance/incident/evidence/coordination noise are suppressed. Missing metadata degrades to an Unclassified lane.
+`codex-now`, `codex-candidate`/`codex-managed`, `codex-blocked`, and `codex-watching` derive Now, Later, Blocked, and Watching. Completed source items derive Done. Nodes referenced by lineage remain visible; current-status nodes remain visible; metadata-free loose nodes and maintenance/incident/evidence/coordination noise are suppressed. Missing metadata degrades to an Unclassified lane. Attention fields never create a new lifecycle or task authority; they only add a bounded recovery summary to an existing projection.
 
 ## Cache contract
 

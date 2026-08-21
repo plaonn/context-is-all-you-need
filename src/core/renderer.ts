@@ -109,6 +109,7 @@ function renderBoardProject(project: ProjectContextBoardProject, expanded: boole
       ${attention ? `<span class="state-focus state-${escapeAttr(attention)}">${STATUS_LABEL[attention]} focus</span>` : ""}
       ${renderStatusCount(statusCounts, "now")} ${renderStatusCount(statusCounts, "blocked")} ${renderStatusCount(statusCounts, "watching")} ${renderStatusCount(statusCounts, "later")} ${renderStatusCount(statusCounts, "done")}
     </div>
+    ${snapshot.attention ? renderCompactAttention(snapshot.attention) : ""}
     <div class="workstream-map" aria-label="Presentation-only connected workstream map">
       ${map || `<p class="empty-map">No configured workstream nodes in the compact source window.</p>`}
     </div>
@@ -167,6 +168,7 @@ export function renderSnapshot(snapshot: ProjectContextSnapshot): string {
     <h1>${escapeHtml(snapshot.title)}</h1>
     <p class="goal">${snapshot.goal ? escapeHtml(snapshot.goal) : "Goal not configured"}</p>
     ${snapshot.nextCheckpoint ? `<p class="checkpoint"><span>Next checkpoint</span> ${escapeHtml(snapshot.nextCheckpoint)}</p>` : ""}
+    ${snapshot.attention ? renderCompactAttention(snapshot.attention) : ""}
     <a class="canonical-link" href="${escapeAttr(snapshot.url)}" target="_blank" rel="noreferrer">Open canonical root in Todoist ↗</a>
   </section>
   <div class="lanes">${lanes || `<section class="message"><p>No salient project nodes were found in the bounded source window.</p></section>`}</div>`;
@@ -176,18 +178,55 @@ function renderNode(node: ProjectContextSnapshot["lanes"][number]["nodes"][numbe
   const predecessors = node.predecessorIds.length > 0
     ? `<div class="lineage"><span>Context predecessors</span>${node.predecessorIds.map((id) => `<a href="https://app.todoist.com/app/task/${encodeURIComponent(id)}" target="_blank" rel="noreferrer">${escapeHtml(id)}</a>`).join("")}</div>`
     : "";
-  const detail = node.status === "blocked" && node.blocker
+  const legacyDetail = node.status === "blocked" && node.blocker
     ? `<p class="detail"><strong>Blocker:</strong> ${escapeHtml(node.blocker)}</p>`
     : node.status === "watching" && node.resume
       ? `<p class="detail"><strong>Resume:</strong> ${escapeHtml(node.resume)}</p>`
       : node.checkpoint
         ? `<p class="detail"><strong>Checkpoint:</strong> ${escapeHtml(node.checkpoint)}</p>`
         : "";
+  const detail = node.attention ? renderAttentionDetails(node.attention) : legacyDetail;
   return `<article class="node" data-status="${escapeAttr(node.status)}">
     <div class="node-top"><span class="status status-${escapeAttr(node.status)}">${STATUS_LABEL[node.status]}</span><a class="node-title" href="${escapeAttr(node.url)}" target="_blank" rel="noreferrer">${escapeHtml(node.title)} ↗</a></div>
     <p class="node-summary">${escapeHtml(node.summary)}</p>
     ${detail}${predecessors}
   </article>`;
+}
+
+function renderCompactAttention(attention: NonNullable<ProjectContextSnapshot["attention"]>): string {
+  const watching = attention.salience === "low";
+  const next = attention.recommendation ?? attention.resumeCondition;
+  const extraCount = attention.attentionCount > 1 ? `<span class="attention-count">+${attention.attentionCount - 1} more</span>` : "";
+  const label = attention.kind === "watching" ? "Watching" : attention.kind === "decision" ? "Decision" : "Blocked";
+  return `<aside class="project-attention project-attention-${watching ? "low" : "high"}" data-attention="${escapeAttr(attention.kind)}">
+    <div class="attention-heading"><strong>${watching ? "Passive watching" : "Material attention"}</strong><span>${label}</span>${extraCount}</div>
+    <a class="attention-title" href="${escapeAttr(attention.url)}" target="_blank" rel="noreferrer">${escapeHtml(attention.title)} ↗</a>
+    ${attention.blockedOn ? `<p><strong>Where:</strong> ${escapeHtml(attention.blockedOn)}</p>` : ""}
+    ${attention.whyWorkerCannotDecide ? `<p><strong>Why:</strong> ${escapeHtml(attention.whyWorkerCannotDecide)}</p>` : ""}
+    ${attention.decisionOwner ? `<p><strong>Decision owner:</strong> ${escapeHtml(attention.decisionOwner)}</p>` : ""}
+    ${next ? `<p><strong>${watching ? "Resume" : "Next"}:</strong> ${escapeHtml(next)}</p>` : ""}
+    ${watching && !next ? `<p class="attention-muted">Resume condition not stated.</p>` : ""}
+    <span class="attention-note">Presentation-only context; no approval or authority inferred.</span>
+  </aside>`;
+}
+
+function renderAttentionDetails(attention: NonNullable<ProjectContextSnapshot["lanes"][number]["nodes"][number]["attention"]>): string {
+  const fields = [
+    ["Blocked on", attention.blockedOn],
+    ["Why worker cannot decide", attention.whyWorkerCannotDecide],
+    ["Decision owner", attention.decisionOwner],
+    ["Recommended safe/default path", attention.recommendation],
+    ["Alternatives", attention.alternatives],
+    ["Safe state preserved", attention.safeState],
+    ["Independent work completed", attention.independentWork],
+    ["Resume condition", attention.resumeCondition],
+    ["Evidence/provenance", attention.evidence]
+  ] as const;
+  const rendered = fields
+    .filter(([, value]) => Boolean(value))
+    .map(([label, value]) => `<p class="detail"><strong>${escapeHtml(label)}:</strong> ${escapeHtml(value!)}</p>`)
+    .join("");
+  return rendered ? `<div class="attention-detail" data-attention-detail="${escapeAttr(attention.kind)}">${rendered}<p class="attention-note">Presentation-only context; no approval or authority inferred.</p></div>` : "";
 }
 
 function renderProjectNavigation(selection: ProjectContextSelectionProjection): string {

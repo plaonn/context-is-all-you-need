@@ -20,6 +20,22 @@ describe("line-and-box UI projection", () => {
   it("renders all selected-Context projects as compact connected workstream cards", () => {
     const first = fixtureSource();
     first.root = { ...first.root, id: "root-a", content: "* 🗂️ Project Atlas" };
+    first.activeTasks = first.activeTasks.map((candidate) => candidate.id === "blocked"
+      ? {
+          ...candidate,
+          description: `Project context v1:
+Workstream: delivery
+Summary: Keep the adapter boundary
+Blocked on: Receiver contract
+Why worker cannot decide: Receiver authority is missing
+Decision owner: ChatGPT
+Recommended safe/default path: Preserve the read-only adapter
+Safe state preserved: No writes attempted
+Independent work completed: Local projection checks
+Resume condition: A durable decision is published
+Evidence/provenance: Synthetic renderer fixture`
+        }
+      : candidate);
     const second = fixtureSource();
     second.root = { ...second.root, id: "root-b", content: "* 🗂️ Project Beacon" };
     const freshness: ProjectContextFreshness = {
@@ -53,6 +69,12 @@ describe("line-and-box UI projection", () => {
     expect(html).toContain("map-connector");
     expect(html).toContain("Load history & details");
     expect(html).toContain("Presentation-only connected workstream map");
+    expect(html).toContain("Material attention");
+    expect(html).toContain("Where:");
+    expect(html).toContain("Decision owner:");
+    expect(html).toContain("Next:");
+    expect(html).toContain("no approval or authority inferred");
+    expect(html).not.toContain("Safe state preserved:");
     expect(html).not.toContain('id="project-select"');
     expect(html).not.toContain("Bounded deep detail");
 
@@ -65,6 +87,10 @@ describe("line-and-box UI projection", () => {
     const expandedHtml = renderBoard(expandedBoard, [context], new Set(["root-a"]));
     expect(expandedHtml).toContain("Bounded deep detail");
     expect(expandedHtml).toContain("recent completed tasks read");
+    expect(expandedHtml).toContain("Why worker cannot decide:");
+    expect(expandedHtml).toContain("Safe state preserved:");
+    expect(expandedHtml).toContain("Independent work completed:");
+    expect(expandedHtml).toContain("Resume condition:");
   });
 
   it("keeps Context mappings local and exposes edit/remove controls", () => {

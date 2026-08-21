@@ -19,6 +19,7 @@ Further UX work, if desired, is not a prerequisite for this functional acceptanc
 
 - Replace the single Project selector with local Context mappings and a selected-Context board.
 - Show all selected-Context project roots as compact cards with current/blocked/watching focus and presentation-only workstream connectors.
+- Surface material blocked/decision attention compactly, keep passive watching lower-salience, and reveal bounded resume-critical fields only on expansion without inferring authority.
 - Keep completed/deep history behind per-project expansion, with per-Context/project cache, bounded compact concurrency, and isolated partial failures.
 - Preserve the Project context v1 projection and read-only `data:read` boundary; fresh provider/browser dogfood of this new surface remains a separate evidence layer.
 

@@ -12,6 +12,24 @@ export type TaskMetadata = {
   checkpoint: string | null;
 };
 
+/**
+ * Optional bounded fields from the existing exception/decision packet shape.
+ * Missing or unrecognised values intentionally remain null; the viewer never
+ * infers an owner or an authority from lifecycle labels or task titles.
+ */
+export type TaskAttentionMetadata = {
+  blockedOn: string | null;
+  whyWorkerCannotDecide: string | null;
+  decisionOwner: string | null;
+  recommendation: string | null;
+  alternatives: string | null;
+  safeState: string | null;
+  independentWork: string | null;
+  resumeCondition: string | null;
+  evidence: string | null;
+  disposition: string | null;
+};
+
 export function hasProjectContextMetadata(description: string): boolean {
   return description.split(/\r?\n/).some((line) => /^Project context v1:\s*$/i.test(line.trim()));
 }
@@ -53,8 +71,35 @@ export function parseTaskMetadata(description: string): TaskMetadata {
   };
 }
 
+export function parseTaskAttentionMetadata(description: string): TaskAttentionMetadata {
+  return {
+    blockedOn: boundedFirstField(description, ["Blocked on", "Blocker"]),
+    whyWorkerCannotDecide: boundedFirstField(description, ["Why worker cannot decide"]),
+    decisionOwner: boundedFirstField(description, ["Decision owner"]),
+    recommendation: boundedFirstField(description, ["Recommended safe/default path", "Recommendation"]),
+    alternatives: boundedFirstField(description, ["Alternatives"]),
+    safeState: boundedFirstField(description, ["Safe state preserved"]),
+    independentWork: boundedFirstField(description, ["Independent work completed"]),
+    resumeCondition: boundedFirstField(description, ["Resume condition"]),
+    evidence: boundedFirstField(description, ["Evidence/provenance", "Evidence", "Provenance"]),
+    disposition: boundedFirstState(description, ["Attention state", "Exception state", "Disposition", "Resolution"])
+  };
+}
+
 export function readDescriptionField(description: string, field: string): string | null {
   return readField(metadataBlock(description), field);
+}
+
+function boundedFirstField(description: string, fields: string[]): string | null {
+  for (const field of fields) {
+    const value = readDescriptionField(description, field);
+    if (value) return value.slice(0, 240);
+  }
+  return null;
+}
+
+function boundedFirstState(description: string, fields: string[]): string | null {
+  return boundedFirstField(description, fields)?.toLowerCase() ?? null;
 }
 
 function metadataBlock(description: string): string {
