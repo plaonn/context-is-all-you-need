@@ -48,3 +48,53 @@ export function fixtureSource(): TodoistProjectContextSource {
     }
   };
 }
+
+export function objectiveFixtureSource(rootId = "root-matrix"): TodoistProjectContextSource {
+  return {
+    root: task(rootId, `* 🗂️ ${rootId}`, [], `Project context v1:
+Project Goal: Recover the current direction
+Objective registry:
+- focus | Close the current boundary
+- recovery | Restore the next safe step`, null),
+    activeTasks: [
+      task(`${rootId}-parent`, "Shared current parent", ["codex-now"], `Project context v1:
+Objective: focus
+Summary: Shared current parent
+Context Predecessors: ${rootId}-history`, rootId),
+      task(`${rootId}-branch-a`, "Branch A", ["codex-now"], `Project context v1:
+Objective: focus
+Summary: First branch
+Context Predecessors: ${rootId}-parent`, rootId),
+      task(`${rootId}-branch-b`, "Branch B", ["codex-blocked"], `Project context v1:
+Objective: focus
+Summary: Second branch
+Context Predecessors: ${rootId}-parent
+Blocked on: Synthetic receiver boundary`, rootId),
+      task(`${rootId}-merge`, "Merged recovery step", ["codex-watching"], `Project context v1:
+Objective: recovery
+Summary: Merge both branches
+Context Predecessors: ${rootId}-branch-a, ${rootId}-branch-b
+Resume condition: A safe next observation`, rootId),
+      task(`${rootId}-next`, "Prepare next bounded step", ["codex-candidate"], `Project context v1:
+Objective: recovery
+Summary: Keep the next step ready
+Checkpoint: Resume from the shared band`, rootId),
+      task(`${rootId}-unknown`, "Unregistered objective node", ["codex-now"], `Project context v1:
+Objective: not-registered
+Summary: Unknown metadata remains ungrouped`, rootId)
+    ],
+    completedTasks: [
+      task(`${rootId}-history`, "Recent predecessor", [], `Project context v1:
+Objective: focus
+Summary: Recent accepted context`, rootId, "2026-08-20T00:00:00.000Z")
+    ],
+    coverage: {
+      activePagesFetched: 1,
+      completedPagesFetched: 1,
+      activeTruncated: false,
+      completedTruncated: false,
+      completedSince: "2026-05-23T00:00:00.000Z",
+      completedUntil: "2026-08-21T00:00:00.000Z"
+    }
+  };
+}

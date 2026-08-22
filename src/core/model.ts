@@ -1,6 +1,7 @@
 export const PROJECT_CONTEXT_METADATA_VERSION = 1;
 
 export type ProjectContextStatus = "now" | "later" | "blocked" | "watching" | "done";
+export type ProjectContextBand = "before" | "now" | "after";
 
 export type TodoistProjectContextTask = {
   id: string;
@@ -53,6 +54,9 @@ export type ProjectContextNode = {
   summary: string;
   checkpoint: string | null;
   predecessorIds: string[];
+  objectiveId: string | null;
+  objectiveLabel: string | null;
+  contextBand: ProjectContextBand;
   status: ProjectContextStatus;
   completedAt: string | null;
   blocker: string | null;
@@ -113,6 +117,20 @@ export type ProjectContextLane = {
   nodes: ProjectContextNode[];
 };
 
+export type ProjectContextLineageEdge = {
+  from: string;
+  to: string;
+};
+
+export type ProjectContextObjectiveAttention = "none" | "active" | "high" | "low";
+
+export type ProjectContextObjective = {
+  id: string;
+  label: string;
+  nodeIds: string[];
+  attention: ProjectContextObjectiveAttention;
+};
+
 export type ProjectContextSnapshot = {
   schemaVersion: 1;
   detailLevel?: "compact" | "deep";
@@ -121,7 +139,12 @@ export type ProjectContextSnapshot = {
   url: string;
   goal: string | null;
   goalStatus: ProjectContextGoalStatus;
+  /** Flat graph view used by the shared-NOW board; lanes remain for v1 compatibility. */
+  nodes: ProjectContextNode[];
   lanes: ProjectContextLane[];
+  objectives: ProjectContextObjective[];
+  /** Edges exist only when both ends are connected by explicit Context Predecessors metadata. */
+  lineageEdges: ProjectContextLineageEdge[];
   nextCheckpoint: string | null;
   attention?: ProjectContextAttentionSummary | null;
   coverage: TodoistProjectContextCoverage & {

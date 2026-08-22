@@ -3,10 +3,12 @@ import { PROJECT_CONTEXT_METADATA_VERSION } from "./model.js";
 export type ProjectMetadata = {
   goal: string | null;
   workstreams: Array<{ id: string; label: string }>;
+  objectives: Array<{ id: string; label: string }>;
 };
 
 export type TaskMetadata = {
   workstreamId: string | null;
+  objectiveId: string | null;
   summary: string | null;
   predecessorIds: string[];
   checkpoint: string | null;
@@ -37,30 +39,18 @@ export function hasProjectContextMetadata(description: string): boolean {
 export function parseProjectMetadata(description: string): ProjectMetadata {
   const block = metadataBlock(description);
   const goal = readField(block, "Project Goal");
-  const workstreams: Array<{ id: string; label: string }> = [];
-  const lines = block.split(/\r?\n/);
-  const registryIndex = lines.findIndex((line) => /^Workstream registry:\s*$/i.test(line.trim()));
-  if (registryIndex >= 0) {
-    for (const line of lines.slice(registryIndex + 1)) {
-      const match = /^\s*-\s*([a-z0-9][a-z0-9._-]{0,63})\s*\|\s*(.{1,120})\s*$/i.exec(line);
-      if (!match) {
-        if (line.trim() && !/^\s*-/.test(line)) break;
-        continue;
-      }
-      const id = match[1]!;
-      const label = match[2]!.trim();
-      if (!workstreams.some((workstream) => workstream.id === id)) {
-        workstreams.push({ id, label });
-      }
-    }
-  }
-  return { goal, workstreams };
+  return {
+    goal,
+    workstreams: readRegistry(block, "Workstream registry"),
+    objectives: readRegistry(block, "Objective registry")
+  };
 }
 
 export function parseTaskMetadata(description: string): TaskMetadata {
   const block = metadataBlock(description);
   return {
     workstreamId: normalizeWorkstreamId(readField(block, "Workstream")),
+    objectiveId: normalizeObjectiveId(readField(block, "Objective")),
     summary: readField(block, "Summary"),
     predecessorIds: (readField(block, "Context Predecessors") ?? "")
       .split(",")
@@ -110,10 +100,30 @@ function metadataBlock(description: string): string {
   if (version !== PROJECT_CONTEXT_METADATA_VERSION) return "";
   const block: string[] = [];
   for (const line of lines.slice(start + 1)) {
-    if (/^[A-Z][A-Za-z /-]{1,40}:\s*$/.test(line) && !/^Workstream registry:/i.test(line)) break;
+    if (isSectionHeader(line) && !/^(?:Workstream|Objective) registry:/i.test(line.trim())) break;
     block.push(line);
   }
   return block.join("\n");
+}
+
+function readRegistry(block: string, field: string): Array<{ id: string; label: string }> {
+  const lines = block.split(/\r?\n/);
+  const registryIndex = lines.findIndex((line) => new RegExp(`^${field}:\\s*$`, "i").test(line.trim()));
+  if (registryIndex < 0) return [];
+  const values: Array<{ id: string; label: string }> = [];
+  for (const line of lines.slice(registryIndex + 1)) {
+    if (isSectionHeader(line)) break;
+    const match = /^\s*-\s*([a-z0-9][a-z0-9._-]{0,63})\s*\|\s*(.{1,120})\s*$/i.exec(line);
+    if (!match) continue;
+    const id = match[1]!;
+    const label = match[2]!.trim();
+    if (!values.some((value) => value.id === id)) values.push({ id, label });
+  }
+  return values;
+}
+
+function isSectionHeader(line: string): boolean {
+  return /^[A-Z][A-Za-z /-]{1,40}:\s*$/.test(line.trim());
 }
 
 function readField(text: string, field: string): string | null {
@@ -123,5 +133,9 @@ function readField(text: string, field: string): string | null {
 }
 
 function normalizeWorkstreamId(value: string | null): string | null {
+  return value && /^[a-z0-9][a-z0-9._-]{0,63}$/i.test(value) ? value : null;
+}
+
+function normalizeObjectiveId(value: string | null): string | null {
   return value && /^[a-z0-9][a-z0-9._-]{0,63}$/i.test(value) ? value : null;
 }

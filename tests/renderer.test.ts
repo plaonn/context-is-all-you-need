@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import { buildProjectContextSnapshot } from "../src/core/projection.js";
 import { renderBoard, renderContextSettings, renderSnapshot } from "../src/core/renderer.js";
 import type { ProjectContextBoardProjection, ProjectContextContext, ProjectContextFreshness } from "../src/core/model.js";
-import { fixtureSource } from "./fixtures.js";
+import { fixtureSource, objectiveFixtureSource } from "./fixtures.js";
 
-describe("line-and-box UI projection", () => {
+describe("Context matrix UI projection", () => {
   it("escapes source text and keeps canonical links plus presentation-only lineage", () => {
     const source = fixtureSource();
     source.root.content = "<private title>";
@@ -17,7 +17,7 @@ describe("line-and-box UI projection", () => {
     expect(html).not.toContain("complete");
   });
 
-  it("renders all selected-Context projects as compact connected workstream cards", () => {
+  it("renders all selected-Context projects as horizontally comparable project columns", () => {
     const first = fixtureSource();
     first.root = { ...first.root, id: "root-a", content: "* 🗂️ Project Atlas" };
     first.activeTasks = first.activeTasks.map((candidate) => candidate.id === "blocked"
@@ -66,9 +66,11 @@ Evidence/provenance: Synthetic renderer fixture`
     expect(html).toContain('id="context-select"');
     expect(html).toContain("Project Atlas");
     expect(html).toContain("Project Beacon");
-    expect(html).toContain("map-connector");
+    expect(html).toContain("project-columns");
+    expect(html).toContain('data-shared-axis="now"');
     expect(html).toContain("Load history & details");
-    expect(html).toContain("Presentation-only connected workstream map");
+    expect(html).toContain("Explicit lineage");
+    expect(html).toContain("lineage-edge");
     expect(html).toContain("Material attention");
     expect(html).toContain("Where:");
     expect(html).toContain("Decision owner:");
@@ -91,6 +93,43 @@ Evidence/provenance: Synthetic renderer fixture`
     expect(expandedHtml).toContain("Safe state preserved:");
     expect(expandedHtml).toContain("Independent work completed:");
     expect(expandedHtml).toContain("Resume condition:");
+  });
+
+  it("renders objective regions and explicit branch/merge lineage inside one project column", () => {
+    const source = objectiveFixtureSource();
+    const freshness: ProjectContextFreshness = {
+      state: "fresh",
+      updatedAt: "2026-08-22T00:00:00.000Z",
+      ageMs: 0,
+      refreshing: false,
+      error: null
+    };
+    const context: ProjectContextContext = { localKey: "work", label: "Work", sectionId: "section-work" };
+    const board: ProjectContextBoardProjection = {
+      schemaVersion: 1,
+      context,
+      projects: [{
+        root: { id: source.root.id, title: source.root.content, url: `https://app.todoist.com/app/task/${source.root.id}`, goal: "Recover the current direction", goalStatus: "configured" },
+        snapshot: buildProjectContextSnapshot(source, "compact"),
+        detail: null,
+        freshness,
+        detailFreshness: null,
+        error: null
+      }],
+      discoveryCoverage: { sectionId: "section-work", sectionPagesFetched: 1, sectionTasksRead: 1, rootTasksRead: 1, sectionTruncated: false },
+      freshness
+    };
+
+    const html = renderBoard(board, [context]);
+
+    expect(html).toContain('data-objective-id="focus"');
+    expect(html).toContain("Close the current boundary");
+    expect(html).toContain('data-objective-id="recovery"');
+    expect(html).toContain("lineage-edge-branch");
+    expect(html).toContain("lineage-edge-merge");
+    expect(html).toContain("NOW");
+    expect(html).not.toContain("project-grid");
+    expect(html).not.toContain("objective-complete");
   });
 
   it("keeps Context mappings local and exposes edit/remove controls", () => {

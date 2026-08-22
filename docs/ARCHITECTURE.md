@@ -12,18 +12,18 @@ Chromium full tab / optional toolbar action
         │                                  │
         │                                  └── projection + metadata parser
         │                                             │
-        │                                             └── escaped Context board renderer
+        │                                             └── escaped Context matrix renderer
         └── extension/service-worker.ts ── opens the full tab
 ```
 
 ## Ownership boundaries
 
-- `src/core/metadata.ts`, `projection.ts`, and `model.ts` own public-safe Project context v1 semantics plus the optional bounded attention projection. Attention fields are copied only when present, degrade to unknown/null safely, and never become execution or approval authority.
+- `src/core/metadata.ts`, `projection.ts`, and `model.ts` own public-safe Project context v1 semantics plus the optional bounded attention, Objective, and explicit lineage projection. Attention fields are copied only when present, Objective membership is accepted only for registered IDs, and neither becomes execution or approval authority.
 - `src/core/pagination.ts` owns cursor traversal and explicit bounded coverage.
 - `src/core/api.ts` owns the replaceable Todoist GET-only adapter and never imports MMCP.
 - `src/core/auth.ts` owns Todoist Dynamic Client Registration, public-client PKCE, redirect binding, state verification, token exchange, and safe errors; it has no client-secret field. `src/core/transport.ts` supplies a receiver-neutral fetch transport so native global fetch is never invoked as a class member while injected fetchers remain testable.
 - `src/core/cache.ts` owns browser-local projected cache and single-flight/SWR behavior. The board cache bounds compact project concurrency, isolates per-project failures, and keeps deep reads behind explicit expansion; the original single-project cache remains for Project context v1 compatibility.
-- `src/core/renderer.ts` owns escaped presentation-only HTML; compact cards surface where/why/next attention and expanded cards show bounded resume-critical fields; links point back to canonical Todoist.
+- `src/core/renderer.ts` owns escaped presentation-only HTML; the board renders horizontally arranged Project columns with shared recent/NOW/next rows, Objective regions, and an accessible explicit branch/merge edge list. Compact columns surface where/why/next attention and expanded columns show bounded resume-critical fields; links point back to canonical Todoist.
 - `src/extension/config.ts` owns browser-local Context mappings and one-section migration; `src/extension/` owns MV3 page wiring and optional toolbar action.
 
 There is no backend, native host, SQLite/file cache, content script, task write adapter, or second task authority.

@@ -17,8 +17,8 @@ import type {
   TodoistProjectContextRootDiscovery
 } from "./model.js";
 
-export const PROJECT_CONTEXT_CACHE_KEY = "project-context-cache-v1";
-export const PROJECT_CONTEXT_BOARD_CACHE_KEY = "project-context-board-cache-v1";
+export const PROJECT_CONTEXT_CACHE_KEY = "project-context-cache-v2";
+export const PROJECT_CONTEXT_BOARD_CACHE_KEY = "project-context-board-cache-v2";
 const DEFAULT_FRESH_TTL_MS = 60_000;
 const DEFAULT_STALE_TTL_MS = 5 * 60_000;
 
@@ -44,7 +44,7 @@ type CacheEntry<T> = {
 };
 
 type CacheEnvelope = {
-  schemaVersion: 1;
+  schemaVersion: 2;
   discovery?: CacheEntry<ProjectContextRootDiscoveryProjection>;
   snapshots: Record<string, CacheEntry<ProjectContextSnapshot>>;
 };
@@ -222,7 +222,7 @@ export class ProjectContextCache {
     if (this.hydration) return this.hydration;
     this.hydration = (async () => {
       const stored = await this.options.storage?.get<CacheEnvelope>(PROJECT_CONTEXT_CACHE_KEY);
-      if (!stored || stored.schemaVersion !== 1 || !stored.snapshots) return;
+      if (!stored || stored.schemaVersion !== 2 || !stored.snapshots) return;
       if (stored.discovery) this.discoveryEntry = stored.discovery;
       for (const [id, entry] of Object.entries(stored.snapshots)) this.snapshotEntries.set(id, entry);
     })().catch(() => undefined);
@@ -234,7 +234,7 @@ export class ProjectContextCache {
     const snapshots: Record<string, CacheEntry<ProjectContextSnapshot>> = {};
     for (const [id, entry] of this.snapshotEntries) snapshots[id] = entry;
     await this.options.storage.set({
-      [PROJECT_CONTEXT_CACHE_KEY]: { schemaVersion: 1, discovery: this.discoveryEntry, snapshots } satisfies CacheEnvelope
+      [PROJECT_CONTEXT_CACHE_KEY]: { schemaVersion: 2, discovery: this.discoveryEntry, snapshots } satisfies CacheEnvelope
     });
   }
 }
@@ -250,7 +250,7 @@ type BoardCacheState = {
 };
 
 type BoardCacheEnvelope = {
-  schemaVersion: 1;
+  schemaVersion: 2;
   contexts: Record<string, {
     sectionId: string;
     discovery?: CacheEntry<ProjectContextRootDiscoveryProjection>;
@@ -573,7 +573,7 @@ export class ProjectContextBoardCache {
     if (this.hydration) return this.hydration;
     this.hydration = (async () => {
       const stored = await this.options.storage?.get<BoardCacheEnvelope>(PROJECT_CONTEXT_BOARD_CACHE_KEY);
-      if (!stored || stored.schemaVersion !== 1 || !stored.contexts) return;
+      if (!stored || stored.schemaVersion !== 2 || !stored.contexts) return;
       for (const [localKey, value] of Object.entries(stored.contexts)) {
         const state: BoardCacheState = {
           sectionId: value.sectionId,
@@ -599,6 +599,6 @@ export class ProjectContextBoardCache {
       for (const [id, entry] of state.details) details[id] = entry;
       contexts[localKey] = { sectionId: state.sectionId, discovery: state.discovery, snapshots, details };
     }
-    await this.options.storage.set({ [PROJECT_CONTEXT_BOARD_CACHE_KEY]: { schemaVersion: 1, contexts } satisfies BoardCacheEnvelope });
+    await this.options.storage.set({ [PROJECT_CONTEXT_BOARD_CACHE_KEY]: { schemaVersion: 2, contexts } satisfies BoardCacheEnvelope });
   }
 }

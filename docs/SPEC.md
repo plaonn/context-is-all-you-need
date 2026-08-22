@@ -5,11 +5,12 @@
 The extension opens a dedicated full tab. The optional toolbar action opens the same `index.html` page. The page presents:
 
 - a local Context selector and settings surface;
-- one compact card for every project root in the selected Context;
-- project goal/state counts, current or blocked attention, connected workstream lanes, contextual predecessor links, and canonical Todoist links; and
+- a wide-screen Context matrix with one stable horizontal Project column for every project root in the selected Context;
+- a shared semantic NOW band with bounded recent context above and immediate next/resume context below each column;
+- explicit short-term Objective regions, branch/merge lineage derived from Context Predecessors, project goal/state counts, current or blocked attention, and canonical Todoist links; and
 - progressive project history/detail, source coverage, and explicit freshness/partial-read status.
 
-The map connectors and predecessor links are presentation-only. They do not create dependencies or alter Todoist lifecycle.
+On narrow layouts the matrix transposes to vertically stacked Project columns while preserving the same node, Objective, status, and lineage semantics. Objective regions, graph edges, and predecessor links are presentation-only. They do not create dependencies or alter Todoist lifecycle.
 
 ## Source boundary
 
@@ -31,6 +32,10 @@ Project Goal: Make strategy changes explainable and reversible
 Workstream registry:
 - strategy | Strategy
 - execution | Execution
+
+Objective registry:
+- recovery | Recovery
+- delivery | Delivery
 ```
 
 Task descriptions may contain:
@@ -38,12 +43,17 @@ Task descriptions may contain:
 ```text
 Project context v1:
 Workstream: execution
+Objective: delivery
 Summary: Validate the bounded plan before any apply
 Context Predecessors: task-a, task-b
 Checkpoint: Dry-run disposition recorded
 ```
 
 `Context Predecessors` is presentation-only lineage. It is not a Todoist dependency, claim, scheduler input, execution order, or completion authority. Unknown fields and versions are ignored.
+
+`Objective registry` and task-level `Objective` are an additive grouping contract. A task is grouped only when its Objective ID is explicitly present and registered on the Project root. Missing or unknown IDs remain ungrouped. Objective attention may be highlighted from current, blocked, or watching members for orientation, but the Objective never becomes a lifecycle object and no Objective state is inferred from bounded absence of active tasks.
+
+The projection exposes a flat graph view in addition to the compatibility Workstream lanes. The graph has three semantic bands (`before`, `now`, `after`) and explicit edges only for predecessor IDs whose source and target nodes are both present in the bounded projection. Spatial adjacency, sorting, Objective membership, and Workstream labels never create an edge.
 
 ### Bounded attention packet
 

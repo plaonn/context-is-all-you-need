@@ -7,16 +7,19 @@ describe("Project context v1 projection", () => {
   it("parses bounded root and task metadata while ignoring unknown versions", () => {
     expect(parseProjectMetadata("before\nProject context v1:\nProject Goal: Explainable work\nWorkstream registry:\n- strategy | Strategy\n- delivery | Delivery\n\nother")).toEqual({
       goal: "Explainable work",
-      workstreams: [{ id: "strategy", label: "Strategy" }, { id: "delivery", label: "Delivery" }]
+      workstreams: [{ id: "strategy", label: "Strategy" }, { id: "delivery", label: "Delivery" }],
+      objectives: []
     });
     expect(parseTaskMetadata("Project context v1:\nWorkstream: strategy\nSummary: Bounded summary\nContext Predecessors: done, done, bad id!, next\nCheckpoint: Checkpoint")).toEqual({
       workstreamId: "strategy",
+      objectiveId: null,
       summary: "Bounded summary",
       predecessorIds: ["done", "next"],
       checkpoint: "Checkpoint"
     });
     expect(parseTaskMetadata("Project context v2:\nWorkstream: future")).toEqual({
       workstreamId: null,
+      objectiveId: null,
       summary: null,
       predecessorIds: [],
       checkpoint: null
@@ -42,6 +45,57 @@ Evidence/provenance: Synthetic fixture`)).toEqual({
       evidence: "Synthetic fixture",
       disposition: null
     });
+  });
+
+  it("groups only registered Objectives and builds branch/merge edges from explicit predecessors", () => {
+    const source = fixtureSource();
+    source.root = {
+      ...source.root,
+      description: `Project context v1:
+Project Goal: Recover direction
+Objective registry:
+- focus | Close the current boundary
+- recovery | Restore the next safe step`
+    };
+    source.activeTasks = [
+      task("parent", "Shared parent", ["codex-now"], `Project context v1:
+Objective: focus
+Summary: Shared parent`),
+      task("branch-a", "Branch A", ["codex-now"], `Project context v1:
+Objective: focus
+Summary: First branch
+Context Predecessors: parent`),
+      task("branch-b", "Branch B", ["codex-blocked"], `Project context v1:
+Objective: focus
+Summary: Second branch
+Context Predecessors: parent
+Blocked on: Synthetic boundary`),
+      task("merge", "Merged next step", ["codex-watching"], `Project context v1:
+Objective: recovery
+Summary: Merge both branches
+Context Predecessors: branch-a, branch-b`),
+      task("unknown-objective", "Unknown objective", ["codex-now"], `Project context v1:
+Objective: not-registered
+Summary: Must remain ungrouped`)
+    ];
+    source.completedTasks = [];
+
+    const snapshot = buildProjectContextSnapshot(source);
+    expect(snapshot.objectives.map((objective) => ({ ...objective, nodeIds: [...objective.nodeIds].sort() }))).toEqual([
+      { id: "focus", label: "Close the current boundary", nodeIds: ["branch-a", "branch-b", "parent"], attention: "high" },
+      { id: "recovery", label: "Restore the next safe step", nodeIds: ["merge"], attention: "low" }
+    ]);
+    expect(snapshot.lineageEdges).toEqual(expect.arrayContaining([
+      { from: "parent", to: "branch-a" },
+      { from: "parent", to: "branch-b" },
+      { from: "branch-a", to: "merge" },
+      { from: "branch-b", to: "merge" }
+    ]));
+    expect(snapshot.lineageEdges).toHaveLength(4);
+    expect(snapshot.nodes.find((node) => node.id === "unknown-objective")).toMatchObject({ objectiveId: null, objectiveLabel: null });
+    expect(snapshot.nodes.find((node) => node.id === "parent")?.contextBand).toBe("now");
+    expect(snapshot.nodes.find((node) => node.id === "merge")?.contextBand).toBe("now");
+    expect(JSON.stringify(snapshot)).not.toContain("dependency");
   });
 
   it("keeps lifecycle, salience, lineage, and source immutability explicit", () => {

@@ -15,12 +15,13 @@
 
 Further UX work, if desired, is not a prerequisite for this functional acceptance.
 
-## Context recovery board — implemented locally 2026-08-22
+## Context recovery matrix — implemented locally 2026-08-22
 
-- Replace the single Project selector with local Context mappings and a selected-Context board.
-- Show all selected-Context project roots as compact cards with current/blocked/watching focus and presentation-only workstream connectors.
+- Replace the single Project selector with local Context mappings and a selected-Context matrix.
+- Show all selected-Context project roots as stable horizontal Project columns with a shared semantic NOW band and bounded before/after context; transpose columns vertically on narrow layouts.
+- Group only explicitly registered short-term Objectives and render only explicit Context Predecessor edges, including branch/merge cues; Workstream remains optional metadata rather than the primary layout axis.
 - Surface material blocked/decision attention compactly, keep passive watching lower-salience, and reveal bounded resume-critical fields only on expansion without inferring authority.
-- Keep completed/deep history behind per-project expansion, with per-Context/project cache, bounded compact concurrency, and isolated partial failures.
+- Keep completed/deep history behind per-project expansion, with per-Context/project cache, bounded compact concurrency, and isolated partial failures; advance the cache envelope/key version so stale pre-matrix snapshots are not misread.
 - Preserve the Project context v1 projection and read-only `data:read` boundary; fresh provider/browser dogfood of this new surface remains a separate evidence layer.
 
 ## Reserved future decisions

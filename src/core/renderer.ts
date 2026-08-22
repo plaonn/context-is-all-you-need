@@ -1,19 +1,28 @@
 import type {
+  ProjectContextBand,
   ProjectContextBoardProjection,
   ProjectContextBoardProject,
   ProjectContextContext,
   ProjectContextFreshness,
+  ProjectContextLineageEdge,
+  ProjectContextNode,
   ProjectContextSelectionProjection,
   ProjectContextSnapshot,
   ProjectContextStatus
 } from "./model.js";
 
-const STATUS_LABEL: Record<string, string> = {
+const STATUS_LABEL: Record<ProjectContextStatus, string> = {
   now: "Now",
   later: "Later",
   blocked: "Blocked",
   watching: "Watching",
   done: "Done"
+};
+
+const BAND_LABEL: Record<ProjectContextBand, string> = {
+  before: "Recent context",
+  now: "NOW",
+  after: "Next / resume"
 };
 
 export function renderSelection(selection: ProjectContextSelectionProjection): string {
@@ -46,18 +55,23 @@ export function renderBoard(
     <div>
       <p class="eyebrow">CONTEXT BOARD · READ ONLY</p>
       <h1>${escapeHtml(board.context.label)}</h1>
-      <p>Parallel project roots, connected workstream progression, and the next useful continuation.</p>
+      <p>Project columns share a stable NOW band; explicit objectives and contextual lineage explain the next useful continuation.</p>
     </div>
     <div class="board-summary" aria-label="Context summary">
       <strong>${projectCount}</strong><span>projects</span>
       ${failedCount > 0 ? `<strong class="summary-alert">${failedCount}</strong><span>partial reads</span>` : ""}
     </div>
   </section>
-  <section class="project-grid" aria-label="Projects in ${escapeAttr(board.context.label)}">
-    ${projects || `<section class="message"><p>No project dashboard roots were found in this Context's bounded source window.</p></section>`}
+  <section class="project-matrix" aria-label="Projects in ${escapeAttr(board.context.label)}">
+    <div class="matrix-scroll">
+      <div class="matrix-orientation" aria-label="Board orientation"><strong>Project columns</strong><span>Recent context above · shared <b>NOW</b> band · next or resume below</span></div>
+      <div class="project-columns">
+        ${projects || `<section class="message"><p>No project dashboard roots were found in this Context's bounded source window.</p></section>`}
+      </div>
+    </div>
   </section>
   ${renderBoardFreshness(board)}
-  <p class="lineage-note">Workstream connectors and predecessor links are presentation-only context; Todoist remains the canonical task and lifecycle source.</p>`;
+  <p class="lineage-note">Objective regions and explicit Context Predecessors are presentation-only context; Todoist remains the canonical task and lifecycle source.</p>`;
 }
 
 export function renderContextSettings(contexts: ProjectContextContext[], selectedContextKey: string | null): string {
@@ -85,52 +99,120 @@ export function renderContextSettings(contexts: ProjectContextContext[], selecte
 
 function renderBoardProject(project: ProjectContextBoardProject, expanded: boolean): string {
   const snapshot = project.snapshot;
-  const title = project.root.title;
   if (!snapshot) {
-    return `<article class="project-card project-card-error" data-project-id="${escapeAttr(project.root.id)}">
-      <header class="project-card-header"><div><p class="project-kicker">PROJECT ROOT</p><h2>${escapeHtml(title)}</h2></div><a class="canonical-link" href="${escapeAttr(project.root.url)}" target="_blank" rel="noreferrer">Open ↗</a></header>
-      <p class="project-error">This project could not be read in the bounded window. Other projects remain available.</p>
+    return `<article class="project-column project-column-error" data-project-id="${escapeAttr(project.root.id)}">
+      <header class="project-column-header"><div><p class="project-kicker">PROJECT COLUMN</p><h2>${escapeHtml(project.root.title)}</h2><p class="project-goal">Project snapshot unavailable in the bounded read.</p></div><a class="canonical-link" href="${escapeAttr(project.root.url)}" target="_blank" rel="noreferrer">Open ↗</a></header>
+      <section class="project-objectives"><p class="objective-empty">Objectives unavailable until this project can be read.</p></section>
+      ${renderUnavailableBand("before", "Recent context unavailable")}
+      ${renderUnavailableBand("now", "NOW · project read unavailable")}
+      ${renderUnavailableBand("after", "Next / resume unavailable")}
+      <footer class="project-column-footer"><p class="project-error">This project could not be read in the bounded window. Other project columns remain available.</p></footer>
     </article>`;
   }
   const statusCounts = countStatuses(snapshot);
-  const attention = primaryStatus(statusCounts);
-  const map = snapshot.lanes.map(renderMapLane).join("");
+  const focus = primaryStatus(statusCounts);
   const detail = expanded && project.detail
     ? renderExpandedProject(project.detail)
     : expanded
       ? `<div class="project-detail project-detail-loading"><p>Loading bounded project history and details…</p></div>`
       : "";
-  return `<article class="project-card" data-project-id="${escapeAttr(project.root.id)}">
-    <header class="project-card-header">
-      <div><p class="project-kicker">PROJECT ROOT</p><h2>${escapeHtml(snapshot.title)}</h2><p class="project-goal">${snapshot.goal ? escapeHtml(snapshot.goal) : "Goal not configured"}</p></div>
-      <a class="canonical-link" href="${escapeAttr(snapshot.url)}" target="_blank" rel="noreferrer">Open ↗</a>
+  return `<article class="project-column" data-project-id="${escapeAttr(project.root.id)}">
+    <header class="project-column-header">
+      <div class="project-heading-row"><div><p class="project-kicker">PROJECT COLUMN</p><h2>${escapeHtml(snapshot.title)}</h2><p class="project-goal">${snapshot.goal ? escapeHtml(snapshot.goal) : "Goal not configured"}</p></div><a class="canonical-link" href="${escapeAttr(snapshot.url)}" target="_blank" rel="noreferrer">Open ↗</a></div>
+      <div class="project-state" aria-label="Project state">
+        ${focus ? `<span class="state-focus state-${escapeAttr(focus)}">${STATUS_LABEL[focus]} focus</span>` : ""}
+        ${renderStatusCount(statusCounts, "now")} ${renderStatusCount(statusCounts, "blocked")} ${renderStatusCount(statusCounts, "watching")} ${renderStatusCount(statusCounts, "later")} ${renderStatusCount(statusCounts, "done")}
+      </div>
+      ${snapshot.attention ? renderCompactAttention(snapshot.attention) : ""}
     </header>
-    <div class="project-state" aria-label="Project state">
-      ${attention ? `<span class="state-focus state-${escapeAttr(attention)}">${STATUS_LABEL[attention]} focus</span>` : ""}
-      ${renderStatusCount(statusCounts, "now")} ${renderStatusCount(statusCounts, "blocked")} ${renderStatusCount(statusCounts, "watching")} ${renderStatusCount(statusCounts, "later")} ${renderStatusCount(statusCounts, "done")}
-    </div>
-    ${snapshot.attention ? renderCompactAttention(snapshot.attention) : ""}
-    <div class="workstream-map" aria-label="Presentation-only connected workstream map">
-      ${map || `<p class="empty-map">No configured workstream nodes in the compact source window.</p>`}
-    </div>
-    <div class="project-card-actions"><button type="button" data-project-expand="${escapeAttr(snapshot.id)}" aria-expanded="${expanded ? "true" : "false"}">${expanded ? "Hide history & details" : project.detail ? "Show history & details" : "Load history & details"}</button>${project.error ? `<span class="project-error-inline">Some reads are stale or unavailable.</span>` : ""}</div>
-    ${detail}
+    <section class="project-objectives" aria-label="Short-term Objectives">${renderObjectiveRegions(snapshot)}</section>
+    ${renderProjectBand(snapshot, "before")}
+    ${renderProjectBand(snapshot, "now")}
+    ${renderProjectBand(snapshot, "after")}
+    <footer class="project-column-footer">
+      ${renderLineageEdges(snapshot)}
+      <div class="project-card-actions"><button type="button" data-project-expand="${escapeAttr(snapshot.id)}" aria-expanded="${expanded ? "true" : "false"}">${expanded ? "Hide history & details" : project.detail ? "Show history & details" : "Load history & details"}</button>${project.error ? `<span class="project-error-inline">Some reads are stale or unavailable.</span>` : ""}</div>
+      ${detail}
+    </footer>
   </article>`;
 }
 
-function renderMapLane(lane: ProjectContextSnapshot["lanes"][number]): string {
-  const nodes = lane.nodes.map((node, index) => `${index > 0 ? `<span class="map-connector" aria-hidden="true"></span>` : ""}${renderMapNode(node)}`).join("");
-  return `<section class="workstream-lane" data-workstream="${escapeAttr(lane.id)}"><header><h3>${escapeHtml(lane.label)}</h3><span>${lane.nodes.length}</span></header><div class="workstream-track">${nodes}</div></section>`;
+function renderUnavailableBand(band: ProjectContextBand, message: string): string {
+  return `<section class="project-band project-band-${band}" data-band="${band}"><div class="band-caption"><span>${BAND_LABEL[band]}</span><small>${band === "now" ? "Shared comparison band" : "Bounded context"}</small></div><div class="band-nodes"><p class="band-empty">${escapeHtml(message)}</p></div></section>`;
 }
 
-function renderMapNode(node: ProjectContextSnapshot["lanes"][number]["nodes"][number]): string {
-  const predecessorLinks = node.predecessorIds.map((id) => `<a href="https://app.todoist.com/app/task/${encodeURIComponent(id)}" target="_blank" rel="noreferrer">${escapeHtml(id)}</a>`).join("");
-  return `<article class="map-node map-node-${escapeAttr(node.status)}" data-status="${escapeAttr(node.status)}"><span class="status status-${escapeAttr(node.status)}">${STATUS_LABEL[node.status]}</span><a class="map-node-title" href="${escapeAttr(node.url)}" target="_blank" rel="noreferrer">${escapeHtml(node.title)} ↗</a>${node.checkpoint ? `<span class="map-node-next">${escapeHtml(node.checkpoint)}</span>` : ""}${predecessorLinks ? `<span class="map-node-lineage">From ${predecessorLinks}</span>` : ""}</article>`;
+function renderProjectBand(snapshot: ProjectContextSnapshot, band: ProjectContextBand): string {
+  const nodes = snapshot.nodes.filter((node) => node.contextBand === band);
+  const nodeMap = new Map(snapshot.nodes.map((node) => [node.id, node]));
+  const description = band === "before" ? "Bounded recent predecessor context" : band === "now" ? "Current, blocked, or watching state" : "Immediate next, resume, or checkpoint context";
+  return `<section class="project-band project-band-${band}" data-band="${band}"${band === "now" ? ` data-shared-axis="now"` : ""}>
+    <div class="band-caption"><strong>${BAND_LABEL[band]}</strong><small>${description}</small></div>
+    <div class="band-nodes">${nodes.length > 0 ? nodes.map((node) => renderGraphNode(node, nodeMap)).join("") : `<p class="band-empty">No salient nodes in this bounded band.</p>`}</div>
+  </section>`;
+}
+
+function renderObjectiveRegions(snapshot: ProjectContextSnapshot): string {
+  if (snapshot.objectives.length === 0) return `<p class="objective-empty">No explicit short-term Objectives; lineage remains ungrouped.</p>`;
+  const nodes = new Map(snapshot.nodes.map((node) => [node.id, node]));
+  return snapshot.objectives.map((objective) => {
+    const memberLinks = objective.nodeIds
+      .map((id) => nodes.get(id))
+      .filter((node): node is ProjectContextNode => Boolean(node))
+      .map((node) => `<a href="${escapeAttr(node.url)}" target="_blank" rel="noreferrer">${escapeHtml(node.title)}</a>`)
+      .join("");
+    return `<section class="objective-region objective-${escapeAttr(objective.attention)}" data-objective-id="${escapeAttr(objective.id)}">
+      <div class="objective-region-heading"><span>OBJECTIVE</span><strong>${escapeHtml(objective.label)}</strong><small>${objective.nodeIds.length} node${objective.nodeIds.length === 1 ? "" : "s"}</small></div>
+      <div class="objective-members">${memberLinks}</div>
+      <span class="objective-note">Presentation grouping; task lifecycle remains canonical.</span>
+    </section>`;
+  }).join("");
+}
+
+function renderGraphNode(node: ProjectContextNode, nodes: ReadonlyMap<string, ProjectContextNode>): string {
+  const predecessorLinks = node.predecessorIds
+    .map((id) => `<a href="https://app.todoist.com/app/task/${encodeURIComponent(id)}" target="_blank" rel="noreferrer">${escapeHtml(nodes.get(id)?.title ?? id)}</a>`)
+    .join("");
+  const objective = node.objectiveLabel ? `<span class="node-objective">${escapeHtml(node.objectiveLabel)}</span>` : "";
+  const recovery = node.attention?.salience === "high"
+    ? `<span class="node-recovery">${node.attention.decisionOwner ? `Owner: ${escapeHtml(node.attention.decisionOwner)}` : node.attention.recommendation ? `Next: ${escapeHtml(node.attention.recommendation)}` : "Material attention"}</span>`
+    : "";
+  return `<article class="graph-node graph-node-${escapeAttr(node.status)}" data-node-id="${escapeAttr(node.id)}" data-status="${escapeAttr(node.status)}" data-context-band="${escapeAttr(node.contextBand)}">
+    <div class="node-top"><span class="status status-${escapeAttr(node.status)}">${STATUS_LABEL[node.status]}</span>${objective}<a class="map-node-title" href="${escapeAttr(node.url)}" target="_blank" rel="noreferrer">${escapeHtml(node.title)} ↗</a></div>
+    <p class="node-summary">${escapeHtml(node.summary)}</p>
+    ${recovery}${node.checkpoint ? `<span class="map-node-next">${escapeHtml(node.checkpoint)}</span>` : ""}
+    ${predecessorLinks ? `<span class="map-node-lineage"><span>Explicit predecessor${node.predecessorIds.length === 1 ? "" : "s"}</span>${predecessorLinks}</span>` : ""}
+  </article>`;
+}
+
+function renderLineageEdges(snapshot: ProjectContextSnapshot): string {
+  const nodes = new Map(snapshot.nodes.map((node) => [node.id, node]));
+  const outgoing = new Map<string, number>();
+  const incoming = new Map<string, number>();
+  for (const edge of snapshot.lineageEdges) {
+    outgoing.set(edge.from, (outgoing.get(edge.from) ?? 0) + 1);
+    incoming.set(edge.to, (incoming.get(edge.to) ?? 0) + 1);
+  }
+  const edges = snapshot.lineageEdges.map((edge) => renderLineageEdge(edge, nodes, outgoing, incoming)).join("");
+  return `<section class="explicit-lineage" aria-label="Explicit contextual lineage"><div class="lineage-heading"><strong>Explicit lineage</strong><span>Context Predecessors only · presentation-only</span></div>${edges ? `<ul class="lineage-edge-list">${edges}</ul>` : `<p class="lineage-empty">No explicit branch or merge edge in the bounded source window.</p>`}</section>`;
+}
+
+function renderLineageEdge(
+  edge: ProjectContextLineageEdge,
+  nodes: ReadonlyMap<string, ProjectContextNode>,
+  outgoing: ReadonlyMap<string, number>,
+  incoming: ReadonlyMap<string, number>
+): string {
+  const branch = (outgoing.get(edge.from) ?? 0) > 1;
+  const merge = (incoming.get(edge.to) ?? 0) > 1;
+  const kind = [branch ? "branch" : "", merge ? "merge" : ""].filter(Boolean).join("-") || "link";
+  const from = nodes.get(edge.from);
+  const to = nodes.get(edge.to);
+  return `<li class="lineage-edge lineage-edge-${kind}" data-edge-from="${escapeAttr(edge.from)}" data-edge-to="${escapeAttr(edge.to)}"><span class="lineage-edge-kind">${branch ? "Branch" : merge ? "Merge" : "Link"}</span><a href="${escapeAttr(from?.url ?? taskUrl(edge.from))}" target="_blank" rel="noreferrer">${escapeHtml(from?.title ?? edge.from)}</a><span aria-hidden="true">→</span><a href="${escapeAttr(to?.url ?? taskUrl(edge.to))}" target="_blank" rel="noreferrer">${escapeHtml(to?.title ?? edge.to)}</a></li>`;
 }
 
 function renderExpandedProject(snapshot: ProjectContextSnapshot): string {
-  const lanes = snapshot.lanes.map((lane) => `<section class="detail-lane"><h3>${escapeHtml(lane.label)}</h3><div class="detail-lane-nodes">${lane.nodes.map(renderNode).join("")}</div></section>`).join("");
-  return `<div class="project-detail"><div class="detail-heading"><strong>Bounded deep detail</strong><span>${snapshot.coverage.completedTasksRead} recent completed tasks read · ${snapshot.coverage.completedTruncated ? "window truncated" : "window complete"}</span></div>${lanes || `<p class="empty-map">No deeper nodes were found in the bounded history window.</p>`}</div>`;
+  const nodeMap = new Map(snapshot.nodes.map((node) => [node.id, node]));
+  return `<div class="project-detail"><div class="detail-heading"><strong>Bounded deep detail</strong><span>${snapshot.coverage.completedTasksRead} recent completed tasks read · ${snapshot.coverage.completedTruncated ? "window truncated" : "window complete"}</span></div>${renderLineageEdges(snapshot)}<div class="detail-nodes">${snapshot.nodes.map((node) => renderNode(node, nodeMap)).join("") || `<p class="empty-map">No deeper nodes were found in the bounded history window.</p>`}</div></div>`;
 }
 
 function renderBoardFreshness(board: ProjectContextBoardProjection): string {
@@ -142,7 +224,7 @@ function renderBoardFreshness(board: ProjectContextBoardProjection): string {
 
 function countStatuses(snapshot: ProjectContextSnapshot): Record<ProjectContextStatus, number> {
   const counts: Record<ProjectContextStatus, number> = { now: 0, later: 0, blocked: 0, watching: 0, done: 0 };
-  for (const node of snapshot.lanes.flatMap((lane) => lane.nodes)) counts[node.status] += 1;
+  for (const node of snapshot.nodes) counts[node.status] += 1;
   return counts;
 }
 
@@ -158,11 +240,7 @@ function renderStatusCount(counts: Record<ProjectContextStatus, number>, status:
 }
 
 export function renderSnapshot(snapshot: ProjectContextSnapshot): string {
-  const lanes = snapshot.lanes.map((lane) => `
-    <section class="lane" data-workstream="${escapeAttr(lane.id)}">
-      <header class="lane-header"><h2>${escapeHtml(lane.label)}</h2><span>${lane.nodes.length} nodes</span></header>
-      <div class="lane-nodes">${lane.nodes.map(renderNode).join("")}</div>
-    </section>`).join("");
+  const nodeMap = new Map(snapshot.nodes.map((node) => [node.id, node]));
   return `<section class="project-summary">
     <div class="eyebrow">PROJECT CONTEXT V1 · READ ONLY</div>
     <h1>${escapeHtml(snapshot.title)}</h1>
@@ -171,12 +249,17 @@ export function renderSnapshot(snapshot: ProjectContextSnapshot): string {
     ${snapshot.attention ? renderCompactAttention(snapshot.attention) : ""}
     <a class="canonical-link" href="${escapeAttr(snapshot.url)}" target="_blank" rel="noreferrer">Open canonical root in Todoist ↗</a>
   </section>
-  <div class="lanes">${lanes || `<section class="message"><p>No salient project nodes were found in the bounded source window.</p></section>`}</div>`;
+  <section class="project-single-graph" aria-label="Project context graph">
+    <section class="project-objectives" aria-label="Short-term Objectives">${renderObjectiveRegions(snapshot)}</section>
+    ${renderProjectBand(snapshot, "before")}${renderProjectBand(snapshot, "now")}${renderProjectBand(snapshot, "after")}
+    ${renderLineageEdges(snapshot)}
+    <div class="detail-nodes">${snapshot.nodes.map((node) => renderNode(node, nodeMap)).join("") || `<section class="message"><p>No salient project nodes were found in the bounded source window.</p></section>`}</div>
+  </section>`;
 }
 
-function renderNode(node: ProjectContextSnapshot["lanes"][number]["nodes"][number]): string {
+function renderNode(node: ProjectContextNode, nodes: ReadonlyMap<string, ProjectContextNode>): string {
   const predecessors = node.predecessorIds.length > 0
-    ? `<div class="lineage"><span>Context predecessors</span>${node.predecessorIds.map((id) => `<a href="https://app.todoist.com/app/task/${encodeURIComponent(id)}" target="_blank" rel="noreferrer">${escapeHtml(id)}</a>`).join("")}</div>`
+    ? `<div class="lineage"><span>Context predecessors</span>${node.predecessorIds.map((id) => `<a href="${escapeAttr(nodes.get(id)?.url ?? taskUrl(id))}" target="_blank" rel="noreferrer">${escapeHtml(nodes.get(id)?.title ?? id)}</a>`).join("")}</div>`
     : "";
   const legacyDetail = node.status === "blocked" && node.blocker
     ? `<p class="detail"><strong>Blocker:</strong> ${escapeHtml(node.blocker)}</p>`
@@ -210,7 +293,7 @@ function renderCompactAttention(attention: NonNullable<ProjectContextSnapshot["a
   </aside>`;
 }
 
-function renderAttentionDetails(attention: NonNullable<ProjectContextSnapshot["lanes"][number]["nodes"][number]["attention"]>): string {
+function renderAttentionDetails(attention: NonNullable<ProjectContextNode["attention"]>): string {
   const fields = [
     ["Blocked on", attention.blockedOn],
     ["Why worker cannot decide", attention.whyWorkerCannotDecide],
@@ -242,6 +325,10 @@ function renderFreshness(
   const state = snapshot.state === "fresh" && discovery.state === "fresh" ? "fresh" : snapshot.state === "expired" || discovery.state === "expired" ? "expired" : "stale";
   const error = snapshot.error || discovery.error ? " · provider read failed; showing bounded cache where available" : "";
   return `<footer class="freshness" data-freshness="${state}"><span>Source ${state}</span><span>Updated ${escapeHtml(formatAge(snapshot.ageMs))}</span><span>${coverage.sectionTasksRead} section tasks read${coverage.sectionTruncated ? " · bounded" : ""}</span><span>${escapeHtml(error)}</span></footer>`;
+}
+
+function taskUrl(id: string): string {
+  return `https://app.todoist.com/app/task/${encodeURIComponent(id)}`;
 }
 
 function formatAge(ageMs: number): string {

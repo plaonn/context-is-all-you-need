@@ -10,8 +10,12 @@ import type {
   ProjectContextAttention,
   ProjectContextAttentionKind,
   ProjectContextAttentionSummary,
+  ProjectContextBand,
   ProjectContextLane,
+  ProjectContextLineageEdge,
   ProjectContextNode,
+  ProjectContextObjective,
+  ProjectContextObjectiveAttention,
   ProjectContextRootSummary,
   ProjectContextSnapshot,
   ProjectContextStatus,
@@ -55,34 +59,33 @@ export function buildProjectContextSnapshot(
     ...source.completedTasks.map((task) => toCandidate(task, true))
   ];
   const referencedIds = new Set(candidates.flatMap(({ metadata }) => metadata.predecessorIds));
-  const visible = candidates.filter(({ task, metadata, status }) =>
+  const uniqueCandidates = [...new Map(candidates.map((candidate) => [candidate.task.id, candidate])).values()];
+  const visible = uniqueCandidates.filter(({ task, metadata, status }) =>
     shouldIncludeTask(task, metadata, status, referencedIds)
   );
+  const objectiveRegistry = new Map(rootMetadata.objectives.map((objective) => [objective.id, objective.label]));
+  const nodes = visible
+    .sort(compareCandidates)
+    .map(({ task, metadata, status, attentionMetadata }) => toNode(task, metadata, status, attentionMetadata, objectiveRegistry));
   const registry = new Map(rootMetadata.workstreams.map((workstream) => [workstream.id, workstream.label]));
-  for (const candidate of visible) {
-    const id = candidate.metadata.workstreamId ?? "unclassified";
+  for (const node of nodes) {
+    const id = node.workstreamId;
     if (!registry.has(id)) registry.set(id, id === "unclassified" ? "Unclassified" : id);
   }
   const lanes: ProjectContextLane[] = [...registry.keys()]
     .map((id) => ({
       id,
       label: registry.get(id)!,
-      nodes: visible
-        .filter(({ metadata }) => (metadata.workstreamId ?? "unclassified") === id)
-        .sort(compareCandidates)
-        .map(({ task, metadata, status, attentionMetadata }) => toNode(task, metadata, status, attentionMetadata))
+      nodes: nodes.filter((node) => node.workstreamId === id)
     }))
     .filter((lane) => lane.nodes.length > 0);
-  const attentionCandidates = visible
-    .map(({ task, status, attentionMetadata }) => {
-      const attention = toAttention(task, status, attentionMetadata);
-      return attention ? { task, attention } : null;
-    })
-    .filter((candidate): candidate is { task: TodoistProjectContextTask; attention: ProjectContextAttention } => Boolean(candidate));
+  const attentionCandidates = nodes
+    .map((node, index) => node.attention ? { task: { id: node.id, content: node.title, childOrder: index }, attention: node.attention } : null)
+    .filter((candidate): candidate is { task: { id: string; content: string; childOrder: number }; attention: ProjectContextAttention } => Boolean(candidate));
   const attention = summarizeAttention(attentionCandidates);
-  const nextCheckpoint = visible
+  const nextCheckpoint = nodes
     .filter(({ status }) => status === "now" || status === "blocked" || status === "watching")
-    .map(({ metadata }) => metadata.checkpoint)
+    .map((node) => node.checkpoint)
     .find((checkpoint): checkpoint is string => Boolean(checkpoint)) ?? null;
   return {
     schemaVersion: 1,
@@ -92,15 +95,18 @@ export function buildProjectContextSnapshot(
     url: taskUrl(source.root.id),
     goal: rootMetadata.goal,
     goalStatus: rootMetadata.goal ? "configured" : "unconfigured",
+    nodes,
     lanes,
+    objectives: buildObjectives(rootMetadata.objectives, nodes),
+    lineageEdges: buildLineageEdges(nodes),
     nextCheckpoint,
     attention,
     coverage: {
       ...source.coverage,
       activeTasksRead: source.activeTasks.length,
       completedTasksRead: source.completedTasks.length,
-      visibleTasks: visible.length,
-      suppressedTasks: candidates.length - visible.length
+      visibleTasks: nodes.length,
+      suppressedTasks: candidates.length - nodes.length
     }
   };
 }
@@ -122,8 +128,10 @@ function toNode(
   task: TodoistProjectContextTask,
   metadata: ReturnType<typeof parseTaskMetadata>,
   status: ProjectContextStatus,
-  attentionMetadata: TaskAttentionMetadata
+  attentionMetadata: TaskAttentionMetadata,
+  objectiveRegistry: ReadonlyMap<string, string>
 ): ProjectContextNode {
+  const objectiveId = metadata.objectiveId && objectiveRegistry.has(metadata.objectiveId) ? metadata.objectiveId : null;
   return {
     id: task.id,
     title: task.content,
@@ -132,12 +140,61 @@ function toNode(
     summary: metadata.summary ?? task.content,
     checkpoint: metadata.checkpoint,
     predecessorIds: metadata.predecessorIds,
+    objectiveId,
+    objectiveLabel: objectiveId ? objectiveRegistry.get(objectiveId) ?? null : null,
+    contextBand: contextBandForStatus(status),
     status,
     completedAt: task.completedAt,
     blocker: status === "blocked" ? readDescriptionField(task.description, "Blocker") : null,
     resume: status === "watching" ? readDescriptionField(task.description, "Resume condition") : null,
     attention: toAttention(task, status, attentionMetadata)
   };
+}
+
+function contextBandForStatus(status: ProjectContextStatus): ProjectContextBand {
+  if (status === "done") return "before";
+  if (status === "later") return "after";
+  return "now";
+}
+
+function buildLineageEdges(nodes: ProjectContextNode[]): ProjectContextLineageEdge[] {
+  const nodeIds = new Set(nodes.map((node) => node.id));
+  const edges: ProjectContextLineageEdge[] = [];
+  const seen = new Set<string>();
+  for (const node of nodes) {
+    for (const predecessorId of node.predecessorIds) {
+      if (!nodeIds.has(predecessorId)) continue;
+      const key = `${predecessorId}->${node.id}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      edges.push({ from: predecessorId, to: node.id });
+    }
+  }
+  return edges;
+}
+
+function buildObjectives(
+  definitions: Array<{ id: string; label: string }>,
+  nodes: ProjectContextNode[]
+): ProjectContextObjective[] {
+  return definitions
+    .map((definition) => {
+      const members = nodes.filter((node) => node.objectiveId === definition.id);
+      return {
+        id: definition.id,
+        label: definition.label,
+        nodeIds: members.map((node) => node.id),
+        attention: objectiveAttention(members)
+      } satisfies ProjectContextObjective;
+    })
+    .filter((objective) => objective.nodeIds.length > 0);
+}
+
+function objectiveAttention(nodes: ProjectContextNode[]): ProjectContextObjectiveAttention {
+  if (nodes.some((node) => node.attention?.salience === "high" || node.status === "blocked")) return "high";
+  if (nodes.some((node) => node.attention?.salience === "low" || node.status === "watching")) return "low";
+  if (nodes.some((node) => node.status === "now")) return "active";
+  return "none";
 }
 
 function toAttention(
@@ -193,7 +250,7 @@ function isResolvedOrObsolete(labels: string[], disposition: string | null): boo
 }
 
 function summarizeAttention(
-  candidates: Array<{ task: TodoistProjectContextTask; attention: ProjectContextAttention }>
+  candidates: Array<{ task: { id: string; content: string; childOrder: number }; attention: ProjectContextAttention }>
 ): ProjectContextAttentionSummary | null {
   if (candidates.length === 0) return null;
   const ordered = [...candidates].sort((left, right) => attentionRank(left.attention.kind) - attentionRank(right.attention.kind)
@@ -246,8 +303,10 @@ function compareCandidates(
   left: ReturnType<typeof toCandidate>,
   right: ReturnType<typeof toCandidate>
 ): number {
+  const bands: Record<ProjectContextBand, number> = { before: 0, now: 1, after: 2 };
   const ranks: Record<ProjectContextStatus, number> = { done: 0, now: 1, blocked: 2, watching: 3, later: 4 };
-  return ranks[left.status] - ranks[right.status]
+  return bands[contextBandForStatus(left.status)] - bands[contextBandForStatus(right.status)]
+    || ranks[left.status] - ranks[right.status]
     || left.task.childOrder - right.task.childOrder
     || left.task.id.localeCompare(right.task.id);
 }
