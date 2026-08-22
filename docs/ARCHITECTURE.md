@@ -25,8 +25,13 @@ Chromium full tab / optional toolbar action
 - `src/core/cache.ts` owns browser-local projected cache and single-flight/SWR behavior. The board cache bounds compact project concurrency, isolates per-project failures, and keeps deep reads behind explicit expansion; the original single-project cache remains for Project context v1 compatibility.
 - `src/core/renderer.ts` owns escaped presentation-only HTML; the board renders horizontally arranged Project columns with shared recent/NOW/next rows, Objective regions, and an accessible explicit branch/merge edge list. Compact columns surface where/why/next attention and expanded columns show bounded resume-critical fields; links point back to canonical Todoist.
 - `src/extension/config.ts` owns browser-local Context mappings and one-section migration; `src/extension/` owns MV3 page wiring and optional toolbar action.
+- `scripts/build.mjs` owns checkout-local unpacked artifact generation; `scripts/verify-build.mjs` validates deterministic source revision provenance and required MV3 runtime entrypoints. The generated marker is an identity/readability aid, not a second source or lifecycle store.
 
 There is no backend, native host, SQLite/file cache, content script, task write adapter, or second task authority.
+
+## Unpacked artifact boundary
+
+The repository keeps `dist/` ignored so worktrees do not commit generated output. That means an ignored directory in another checkout can be stale after a source push. The build binds the generated package to the invoking checkout's Git revision in `build-info.json`, and the runtime displays that binding. Build verification is local and deterministic; it does not publish, deploy, or grant provider authority.
 
 ## Extension storage
 

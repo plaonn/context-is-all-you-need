@@ -8,6 +8,7 @@ This file maps durable requirements to repository surfaces. It is not a task dat
 | R2 Context matrix, v1 semantics, bounded cache, Objectives, and material attention | `extension/config.ts`, `metadata.ts`, `projection.ts`, `pagination.ts`, `api.ts`, `cache.ts`, `renderer.ts`, `extension/styles.css` | config/projection/pagination/API/cache/renderer/layout tests | Local multi-Context matrix with shared NOW/project columns, registered Objective grouping, explicit branch/merge lineage, compact parallel reads, bounded blocked/decision attention, passive watching, progressive detail, and freshness readback |
 | R3 public privacy and least privilege | `auth.ts`, `extension/config.ts`, local/session storage, escaped renderer | auth + first-run tests, privacy scan | Satisfied 2026-08-21: clean canonical OAuth registration/consent, PKCE token exchange, authenticated data read, and UI render |
 | R4 maintainable bootstrap | docs, scripts, fixtures, source boundaries | `npm run check` | Canonical revision/readback if push is authorized |
+| R5 identifiable unpacked artifact | `scripts/build.mjs`, `scripts/verify-build.mjs`, `extension/index.html`, `src/extension/app.ts` | build-provenance regression tests, `npm run build`, `npm run verify:build` | Local marker/entrypoint verification; canonical ignored `dist/` rebuild and Chromium readback remain separate evidence |
 
 ## Lifecycle
 

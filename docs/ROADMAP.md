@@ -24,6 +24,12 @@ Further UX work, if desired, is not a prerequisite for this functional acceptanc
 - Keep completed/deep history behind per-project expansion, with per-Context/project cache, bounded compact concurrency, and isolated partial failures; advance the cache envelope/key version so stale pre-matrix snapshots are not misread.
 - Preserve the Project context v1 projection and read-only `data:read` boundary; fresh provider/browser dogfood of this new surface remains a separate evidence layer.
 
+## Unpacked artifact freshness — implemented locally 2026-08-22
+
+- Reconcile checkout-local ignored `dist/` freshness with a deterministic full-revision marker and generated MV3 entrypoint verification.
+- Show loaded artifact provenance in the extension header and document the same-checkout build/load flow.
+- Keep direct Chromium startup/read acceptance separate from local build and test evidence.
+
 ## Reserved future decisions
 
 - Stable extension key/redirect provisioning or explicit use of Todoist's alternative hosted metadata-document flow.

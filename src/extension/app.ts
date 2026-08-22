@@ -17,6 +17,7 @@ const setup = document.querySelector<HTMLElement>("#setup")!;
 const setupForm = document.querySelector<HTMLFormElement>("#setup-form")!;
 const contextLabelInput = document.querySelector<HTMLInputElement>("#context-label")!;
 const sectionInput = document.querySelector<HTMLInputElement>("#section-id")!;
+const buildProvenance = document.querySelector<HTMLElement>("#build-provenance")!;
 const dashboard = document.querySelector<HTMLElement>("#dashboard")!;
 const status = document.querySelector<HTMLElement>("#status")!;
 const refreshButton = document.querySelector<HTMLButtonElement>("#refresh")!;
@@ -33,6 +34,7 @@ const expandedProjectIds = new Set<string>();
 void boot();
 
 async function boot(): Promise<void> {
+  void renderBuildProvenance();
   config = await loadConfig(localStorage);
   if (!config) {
     showSetup();
@@ -61,6 +63,37 @@ async function boot(): Promise<void> {
   }
   hideSetup();
   await readBoard();
+}
+
+type BuildInfo = {
+  schemaVersion: 1;
+  artifact: "unpacked-mv3";
+  sourceRevision: string;
+  sourceState: "clean" | "modified";
+};
+
+async function renderBuildProvenance(): Promise<void> {
+  try {
+    const response = await fetch(chrome.runtime.getURL("build-info.json"), { cache: "no-store" });
+    if (!response.ok) throw new Error("build info unavailable");
+    const value: unknown = await response.json();
+    if (!isBuildInfo(value)) throw new Error("build info invalid");
+    buildProvenance.dataset.kind = "ok";
+    buildProvenance.textContent = `Artifact ${value.sourceRevision.slice(0, 12)} · ${value.sourceState} source`;
+  } catch {
+    buildProvenance.dataset.kind = "warn";
+    buildProvenance.textContent = "Artifact provenance unavailable · rebuild this checkout before loading";
+  }
+}
+
+function isBuildInfo(value: unknown): value is BuildInfo {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Record<string, unknown>;
+  return candidate.schemaVersion === 1
+    && candidate.artifact === "unpacked-mv3"
+    && typeof candidate.sourceRevision === "string"
+    && /^[0-9a-f]{40}$/i.test(candidate.sourceRevision)
+    && (candidate.sourceState === "clean" || candidate.sourceState === "modified");
 }
 
 function configure(next: UserConfig): void {

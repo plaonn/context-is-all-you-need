@@ -20,6 +20,9 @@ button:hover { border-color: var(--accent); }
 .app-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; border-bottom: 1px solid var(--line); padding-bottom: 1rem; }
 .brand { margin: .1rem 0 0; font-size: 1.2rem; font-weight: 700; letter-spacing: -.02em; }
 .eyebrow { margin: 0; color: var(--muted); font-size: .7rem; letter-spacing: .16em; font-weight: 800; }
+.build-provenance { margin: .3rem 0 0; color: var(--muted); font-size: .68rem; }
+.build-provenance[data-kind="warn"] { color: var(--danger); }
+.build-provenance[data-kind="ok"] { color: var(--accent); }
 .header-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
 .status-banner { margin: 1rem 0; color: var(--muted); font-size: .9rem; }
 .status-banner[data-kind="ok"] { color: var(--accent); }

@@ -36,11 +36,18 @@ The repository contains durable instructions, README, requirements, specificatio
 
 Checks: tracked docs and source layout; `npm run check`; clean public-safety scan.
 
+## R5 — Identifiable unpacked artifact
+
+The documented local installation path must produce an unpacked MV3 artifact whose full source revision is recorded in a deterministic `dist/build-info.json` marker. The build verifies the marker, manifest, options-page entrypoint, and module service worker before reporting success, and the loaded page exposes the marker state so an ignored artifact from another checkout cannot be mistaken for the current source.
+
+Rationale: `dist/` is intentionally ignored and each worktree builds its own copy. Git integration updates tracked source but cannot refresh a different checkout's generated directory.
+
 ## Non-goals
 
 - Todoist task creation, editing, completion, assignment, rescheduling, or label mutation.
 - A global planner, second task database, notifications, polling, scheduler, automatic wake, or AI-generated roadmap.
 - MMCP edits, deployment, native host, backend, production launch, extension-store publication, or credential provisioning.
+- Public/store/release publication as part of local artifact freshness reconciliation.
 
 ## Requirement state at bootstrap
 

@@ -12,6 +12,12 @@ The extension opens a dedicated full tab. The optional toolbar action opens the 
 
 On narrow layouts the matrix transposes to vertically stacked Project columns while preserving the same node, Objective, status, and lineage semantics. Objective regions, graph edges, and predecessor links are presentation-only. They do not create dependencies or alter Todoist lifecycle.
 
+## Local unpacked distribution
+
+`npm run build` is checkout-local: it removes and recreates only that checkout's ignored `dist/`, compiles the current source, copies the MV3 page/manifest assets, and writes a deterministic `dist/build-info.json` containing the full source revision and whether tracked or untracked source changes were present. The build then verifies the marker, manifest, options-page script/style references, and required runtime entrypoints. The page header reads the marker from the extension package and shows a short revision; if the marker is absent or invalid, it tells the user to rebuild before loading.
+
+The documented installation flow therefore builds and loads `dist/` from the same checkout. A generated directory left by another worktree is not refreshed by Git integration and is not accepted as current merely because its manifest is present.
+
 ## Source boundary
 
 The user keeps a browser-local list of Context mappings. Each mapping has a local key, label, and one Todoist section ID; mapping edits never write to Todoist. Existing `sectionId` configuration migrates to a single `Current context` mapping without repeating OAuth setup. A board read uses only the selected Context's section boundary.

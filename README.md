@@ -11,7 +11,16 @@ npm ci
 npm run check
 ```
 
-`npm run build` emits an unpacked extension under `dist/`. In Chromium, open `chrome://extensions`, enable Developer mode, and load `dist/` as an unpacked extension.
+`npm run build` emits an unpacked extension under the `dist/` directory of the checkout where the command runs. It deletes and recreates only that checkout's generated directory, writes `dist/build-info.json` with the full source revision, and verifies the MV3 manifest and runtime entrypoints before succeeding. The page header also displays the short revision; an old artifact without provenance is explicitly marked unavailable.
+
+Build and load the same checkout:
+
+```sh
+npm run build
+cat dist/build-info.json
+```
+
+Then, in Chromium, open `chrome://extensions`, enable Developer mode, and load that checkout's `dist/` as an unpacked extension. Do not load a `dist/` left by another worktree; `dist/` is intentionally ignored, so Git integration does not refresh it for you. `npm run verify:build` independently checks that an existing `dist/` still matches the current checkout revision.
 
 ## First-run setup
 
