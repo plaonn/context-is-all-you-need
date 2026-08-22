@@ -1,4 +1,4 @@
-# ADR 0005: Shared-NOW project-column graph
+# ADR 0005: Shared-NOW unified Context graph plane
 
 Status: accepted for the 2026-08-22 Context matrix revision
 
@@ -8,11 +8,11 @@ The bounded multi-Context board made project roots visible together, but compact
 
 ## Decision
 
-Render the selected Context as a wide-screen matrix with this hierarchy: Context → horizontal Project columns → registered Objective regions enclosing compact task blocks → explicit Context Predecessor node-link lineage around a shared semantic NOW band. Each Project column has content-sized `before`, `now`, and `after` bands; the NOW band is the comparison axis, not a chronological coordinate, and sparse bands collapse rather than reserving large empty panels. The primary lineage is spatial: visible paths connect task blocks, while the accessible textual edge list is a secondary fallback. Narrow layouts transpose the columns vertically while preserving node and edge semantics.
+Render the selected Context as one unified graph plane with this hierarchy: Context → compact horizontal project coordinate lanes → one global semantic Y-axis and NOW rule → continuous per-project Context Predecessor node-link lineage, with registered Objective regions enclosing member nodes across the full graph. `before` is above NOW, `now` nodes sit on the actual NOW rule, and `after` is below it; the plane extent is bounded by the maximum salient depth across projects, while sparse or idle lanes collapse to a compact marker. The primary lineage is spatial: visible paths connect task blocks, including cross-band edges, while the accessible textual edge list is a secondary fallback. Narrow layouts transpose the lanes vertically while preserving node and edge semantics.
 
 Objective metadata is additive and presentation-only. A task belongs to an Objective only when its `Objective` ID is present and registered by the Project root's `Objective registry`; missing or unknown IDs remain ungrouped. Objective attention is a visual summary, never a lifecycle or completion object. A lineage edge exists only when the bounded projection contains both endpoints and the target explicitly names the source in `Context Predecessors`. Spatial adjacency, sorting, Objective membership, Workstream labels, and inferred chronology never create edges.
 
-Keep the compatibility Workstream lanes in the projection for existing consumers, but do not make Workstream metadata mandatory for the primary matrix. Use CSS grid/subgrid when available with a narrow-layout fallback; keep the provider adapter, bounded cache/single-flight behavior, attention projection, OAuth `data:read` scope, and read-only boundaries unchanged. Advance the browser-local cache envelope/key version so pre-matrix snapshots are not interpreted as containing the new graph fields.
+Keep the compatibility Workstream lanes in the projection for existing consumers, but do not make Workstream metadata mandatory for the primary plane. Use a single CSS grid topology for aligned lane headers, graph canvases, and disclosures, with a narrow-layout fallback; do not use independent full-height project cards, repeated per-band headings, or a subgrid band renderer. Keep the provider adapter, bounded cache/single-flight behavior, attention projection, OAuth `data:read` scope, and read-only boundaries unchanged. Advance the browser-local cache envelope/key version so pre-matrix snapshots are not interpreted as containing the new graph fields.
 
 ## Consequences
 

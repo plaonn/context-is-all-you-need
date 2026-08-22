@@ -5,12 +5,12 @@
 The extension opens a dedicated full tab. The optional toolbar action opens the same `index.html` page. The page presents:
 
 - a local Context selector and settings surface;
-- a wide-screen Context matrix with one stable horizontal Project column for every project root in the selected Context;
-- a shared semantic NOW band with bounded recent context above and immediate next/resume context below each column;
-- explicit short-term Objective regions that enclose their member blocks, a compact spatial node-link graph with branch/merge paths derived from Context Predecessors, project goal/state counts, current or blocked attention, and canonical Todoist links; and
+- a wide-screen Context graph plane with one compact horizontal coordinate lane for every project root in the selected Context;
+- one global semantic Y-axis with bounded recent context above, a NOW rule running through actual current nodes, and immediate next/resume context below;
+- one continuous per-project spatial node-link graph with explicit branch/merge paths derived from Context Predecessors, Objective regions enclosing their members across the full graph, project goal/state counts, node-local attention, and canonical Todoist links; and
 - progressive project history/detail, source coverage, and explicit freshness/partial-read status.
 
-On narrow layouts the matrix transposes to vertically stacked Project columns while preserving the same node, Objective, status, and lineage semantics. Objective regions, graph edges, and predecessor links are presentation-only. They do not create dependencies or alter Todoist lifecycle.
+On narrow layouts the plane transposes to vertically stacked project lanes while preserving the same node, Objective, status, and lineage semantics. Objective regions, graph edges, and predecessor links are presentation-only. They do not create dependencies or alter Todoist lifecycle.
 
 ## Local unpacked distribution
 
@@ -59,7 +59,7 @@ Checkpoint: Dry-run disposition recorded
 
 `Objective registry` and task-level `Objective` are an additive grouping contract. A task is grouped only when its Objective ID is explicitly present and registered on the Project root. Missing or unknown IDs remain ungrouped. Objective attention may be highlighted from current, blocked, or watching members for orientation, but the Objective never becomes a lifecycle object and no Objective state is inferred from bounded absence of active tasks.
 
-The projection exposes a flat graph view in addition to the compatibility Workstream lanes. The renderer places compact task blocks inside content-sized semantic bands (`before`, `now`, `after`) and draws visible spatial paths only for predecessor IDs whose source and target nodes are both present in the bounded projection. Registered Objective regions wrap the member blocks in the band where they appear; a task with missing or unknown Objective metadata remains in an explicitly ungrouped region. Spatial adjacency, sorting, Objective membership, and Workstream labels never create an edge. The accessible textual lineage disclosure is a detail fallback, not the primary graph.
+The projection exposes a flat graph view in addition to the compatibility Workstream lanes. The renderer computes one bounded plane extent from the maximum salient depth across selected projects, then places every project on the same semantic Y-axis: `before` is above one global NOW rule, `now` nodes sit on that rule, and `after` is below it. Each project has one continuous graph across those bands; visible spatial paths are drawn only for predecessor IDs whose source and target nodes are both present in that bounded projection, including cross-band edges. Registered Objective regions form one spatial enclosure around all of their member nodes across the continuous graph; a task with missing or unknown Objective metadata remains explicitly ungrouped. Sparse or idle projects use a compact near-NOW marker, and material attention stays next to the affected node. Spatial adjacency, sorting, Objective membership, and Workstream labels never create an edge. The accessible textual lineage disclosure and expanded resume-critical fields are secondary detail surfaces, not the primary graph.
 
 ### Bounded attention packet
 

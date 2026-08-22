@@ -12,12 +12,12 @@ describe("Context matrix UI projection", () => {
     expect(html).toContain("&lt;private title&gt;");
     expect(html).not.toContain("<private title>");
     expect(html).toContain("https://app.todoist.com/app/task/now");
-    expect(html).toContain("Context predecessors");
+    expect(html).toContain("Context Predecessors only");
     expect(html).not.toContain("create");
     expect(html).not.toContain("complete");
   });
 
-  it("renders all selected-Context projects as horizontally comparable project columns", () => {
+  it("renders all selected-Context projects as compact horizontal graph lanes", () => {
     const first = fixtureSource();
     first.root = { ...first.root, id: "root-a", content: "* 🗂️ Project Atlas" };
     first.activeTasks = first.activeTasks.map((candidate) => candidate.id === "blocked"
@@ -66,21 +66,25 @@ Evidence/provenance: Synthetic renderer fixture`
     expect(html).toContain('id="context-select"');
     expect(html).toContain("Project Atlas");
     expect(html).toContain("Project Beacon");
-    expect(html).toContain("project-columns");
-    expect(html).toContain("matrix-now-axis");
+    expect(html).toContain("context-graph-plane");
+    expect(html).toContain('data-layout-model="unified-context-graph-plane"');
+    expect(html).toContain("graph-plane-now-rule");
     expect(html).toContain('data-shared-axis="now"');
+    expect(html).toContain("graph-lane-canvas");
     expect(html).toContain("Load history & details");
     expect(html).toContain("Explicit lineage");
     expect(html).toContain("lineage-edge");
     expect(html).toContain("graph-edge-layer");
     expect(html).toContain("graph-edge-path");
     expect(html).toContain('data-lineage-source="Context Predecessors"');
-    expect(html).toContain("objective-region-nodes");
     expect(html).toContain("Material attention");
     expect(html).toContain("Where:");
     expect(html).toContain("Decision owner:");
     expect(html).toContain("Next:");
-    expect(html).toContain("no approval or authority inferred");
+    expect(html).toContain("presentation-only");
+    expect(html).not.toContain("project-columns");
+    expect(html).not.toContain("project-graph-band");
+    expect(html).not.toContain("PROJECT COLUMN");
     expect(html).not.toContain("Safe state preserved:");
     expect(html).not.toContain('id="project-select"');
     expect(html).not.toContain("Bounded deep detail");
@@ -100,7 +104,7 @@ Evidence/provenance: Synthetic renderer fixture`
     expect(expandedHtml).toContain("Resume condition:");
   });
 
-  it("renders objective regions and explicit branch/merge lineage inside one project column", () => {
+  it("renders objective hulls and explicit branch/merge lineage inside one graph plane", () => {
     const source = objectiveFixtureSource();
     const freshness: ProjectContextFreshness = {
       state: "fresh",
@@ -134,17 +138,76 @@ Evidence/provenance: Synthetic renderer fixture`
     expect(html).toContain("lineage-edge-merge");
     expect(html).toContain("graph-edge-branch");
     expect(html).toContain("graph-edge-merge");
-    expect(html).toMatch(/data-node-id="root-matrix-parent"[^>]*data-graph-column="2"[^>]*data-graph-row="0"/);
-    expect(html).toMatch(/data-node-id="root-matrix-branch-a"[^>]*data-graph-column="1"[^>]*data-graph-row="1"/);
-    expect(html).toMatch(/data-node-id="root-matrix-branch-b"[^>]*data-graph-column="3"[^>]*data-graph-row="1"/);
+    expect(html).toMatch(/data-node-id="root-matrix-parent"[^>]*data-graph-row="0"[^>]*data-graph-x="[0-9.]+"/);
+    expect(html).toMatch(/data-node-id="root-matrix-branch-a"[^>]*data-graph-row="0"[^>]*data-graph-x="[0-9.]+"/);
+    expect(html).toMatch(/data-node-id="root-matrix-branch-b"[^>]*data-graph-row="0"[^>]*data-graph-x="[0-9.]+"/);
     expect(html).toMatch(/data-objective-id="focus"[\s\S]*data-node-id="root-matrix-parent"/);
     expect(html).toMatch(/data-objective-id="focus"[\s\S]*data-node-id="root-matrix-branch-a"/);
     expect(html).toMatch(/data-objective-id="focus"[\s\S]*data-node-id="root-matrix-branch-b"/);
     expect(html).toContain("NOW");
     expect(html).toContain('data-shared-axis="now"');
+    expect(html).toContain('data-edge-from="root-matrix-history" data-edge-to="root-matrix-parent"');
+    expect(html).toContain('data-objective-state="ungrouped"');
+    expect(html).not.toContain("No salient nodes in this bounded band.");
+    expect((html.match(/class="graph-edge-path/g) ?? []).length).toBe(5);
     expect(html).not.toContain('class="project-objectives"');
     expect(html).not.toContain("project-grid");
     expect(html).not.toContain("objective-complete");
+  });
+
+  it("keeps dense, sparse, and partial projects on one bounded plane", () => {
+    const freshness: ProjectContextFreshness = {
+      state: "fresh",
+      updatedAt: "2026-08-22T00:00:00.000Z",
+      ageMs: 0,
+      refreshing: false,
+      error: null
+    };
+    const context: ProjectContextContext = { localKey: "work", label: "Work", sectionId: "section-work" };
+    const dense = fixtureSource();
+    dense.root = { ...dense.root, id: "root-dense", content: "* 🗂️ Dense" };
+    const objective = objectiveFixtureSource("root-objective");
+    const idle = fixtureSource();
+    idle.root = { ...idle.root, id: "root-idle", content: "* 🗂️ Idle" };
+    idle.activeTasks = [];
+    idle.completedTasks = [];
+    const projectFrom = (source: ReturnType<typeof fixtureSource>, snapshot = buildProjectContextSnapshot(source, "compact")) => ({
+      root: { id: source.root.id, title: source.root.content, url: `https://app.todoist.com/app/task/${source.root.id}`, goal: snapshot.goal, goalStatus: snapshot.goalStatus },
+      snapshot,
+      detail: null,
+      freshness,
+      detailFreshness: null,
+      error: null
+    });
+    const partialRoot = { id: "root-partial", title: "* 🗂️ Partial", url: "https://app.todoist.com/app/task/root-partial", goal: null, goalStatus: "unconfigured" as const };
+    const board: ProjectContextBoardProjection = {
+      schemaVersion: 1,
+      context,
+      projects: [
+        projectFrom(dense),
+        projectFrom(objective),
+        projectFrom(idle),
+        { root: partialRoot, snapshot: null, detail: null, freshness, detailFreshness: null, error: "provider_unavailable" }
+      ],
+      discoveryCoverage: { sectionId: "section-work", sectionPagesFetched: 1, sectionTasksRead: 4, rootTasksRead: 4, sectionTruncated: false },
+      freshness
+    };
+
+    const html = renderBoard(board, [context]);
+
+    expect(html).toContain('data-layout-model="unified-context-graph-plane"');
+    expect(html).toContain('data-project-count="4"');
+    expect((html.match(/class="graph-plane-now-rule"/g) ?? []).length).toBe(1);
+    expect((html.match(/class="graph-lane-canvas/g) ?? []).length).toBe(4);
+    expect(html).toContain('data-idle-marker="true"');
+    expect(html).toContain("Project read unavailable");
+    expect(html).toContain('data-objective-id="focus"');
+    expect(html).toContain('data-objective-id="recovery"');
+    expect(html).toContain('data-edge-from="root-objective-history" data-edge-to="root-objective-parent"');
+    expect(html).toContain("graph-edge-branch");
+    expect(html).toContain("graph-edge-merge");
+    expect(html).not.toContain("No explicit branch or merge edge in the bounded source window.");
+    expect(html).not.toContain("No salient nodes in this bounded band.");
   });
 
   it("keeps Context mappings local and exposes edit/remove controls", () => {

@@ -8,7 +8,7 @@ The standalone viewer's first surface selected one Project root at a time. That 
 
 ## Decision
 
-Keep a browser-local list of high-level Context mappings, with one Todoist section per mapping. For the selected Context, discover eligible project roots once and render all roots as compact project columns. Each column uses a bounded root plus active-child read and retains the bounded cache/attention behavior from this decision; the shared-NOW, Objective, and explicit-lineage topology is defined by ADR 0005. Connectors and predecessor links are explicitly presentation-only.
+Keep a browser-local list of high-level Context mappings, with one Todoist section per mapping. For the selected Context, discover eligible project roots once and render all roots as compact project coordinate lanes in the unified plane. Each lane uses a bounded root plus active-child read and retains the bounded cache/attention behavior from this decision; the shared-NOW, Objective, and explicit-lineage topology is defined by ADR 0005. Connectors and predecessor links are explicitly presentation-only.
 
 Load full active/recent-completed history only when a user expands a project. Cache discovery per Context, compact and deep projections per project, cap compact reads at four concurrent projects by default, and keep one provider failure on its project card without hiding other cards. Existing one-section configuration migrates to one local Context mapping without repeating OAuth registration.
 
