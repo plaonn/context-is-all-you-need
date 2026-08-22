@@ -61,4 +61,4 @@ The multi-Context matrix is locally implemented and covered by deterministic syn
 
 ## Unpacked artifact reconciliation state
 
-The checkout-bound artifact correction is integrated at `f2eb4f8`, and the canonical ignored `dist/` was rebuilt and verified against that exact clean source revision. Current-revision Chromium startup/read acceptance remains a separate unverified evidence layer; it is not inferred from the build, tests, commit, or canonical artifact readback.
+The checkout-bound artifact correction is integrated, and this checkout's ignored `dist/` was rebuilt and verified against its exact clean source revision after the unified-plane integration. Current-revision Chromium startup/read acceptance remains a separate unverified evidence layer; it is not inferred from the build, tests, commit, or artifact readback.
