@@ -58,3 +58,7 @@ Requirement state: `satisfied` for standalone acceptance. The user directly veri
 ## Context matrix revision state
 
 The multi-Context matrix is locally implemented and covered by deterministic synthetic tests and structural layout checks. The prior direct browser evidence applies to the accepted standalone OAuth/read path; it does not by itself claim fresh provider/browser acceptance of this new matrix surface. No new provider write, OAuth scope, server, or MMCP dependency was introduced. The local cache envelope/key version was advanced so pre-matrix snapshots are discarded rather than interpreted as if they contained the new graph fields.
+
+## Unpacked artifact reconciliation state
+
+The checkout-bound artifact correction is integrated at `f2eb4f8`, and the canonical ignored `dist/` was rebuilt and verified against that exact clean source revision. Current-revision Chromium startup/read acceptance remains a separate unverified evidence layer; it is not inferred from the build, tests, commit, or canonical artifact readback.
