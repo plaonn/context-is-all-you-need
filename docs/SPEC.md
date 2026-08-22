@@ -7,7 +7,7 @@ The extension opens a dedicated full tab. The optional toolbar action opens the 
 - a local Context selector and settings surface;
 - a wide-screen Context matrix with one stable horizontal Project column for every project root in the selected Context;
 - a shared semantic NOW band with bounded recent context above and immediate next/resume context below each column;
-- explicit short-term Objective regions, branch/merge lineage derived from Context Predecessors, project goal/state counts, current or blocked attention, and canonical Todoist links; and
+- explicit short-term Objective regions that enclose their member blocks, a compact spatial node-link graph with branch/merge paths derived from Context Predecessors, project goal/state counts, current or blocked attention, and canonical Todoist links; and
 - progressive project history/detail, source coverage, and explicit freshness/partial-read status.
 
 On narrow layouts the matrix transposes to vertically stacked Project columns while preserving the same node, Objective, status, and lineage semantics. Objective regions, graph edges, and predecessor links are presentation-only. They do not create dependencies or alter Todoist lifecycle.
@@ -59,7 +59,7 @@ Checkpoint: Dry-run disposition recorded
 
 `Objective registry` and task-level `Objective` are an additive grouping contract. A task is grouped only when its Objective ID is explicitly present and registered on the Project root. Missing or unknown IDs remain ungrouped. Objective attention may be highlighted from current, blocked, or watching members for orientation, but the Objective never becomes a lifecycle object and no Objective state is inferred from bounded absence of active tasks.
 
-The projection exposes a flat graph view in addition to the compatibility Workstream lanes. The graph has three semantic bands (`before`, `now`, `after`) and explicit edges only for predecessor IDs whose source and target nodes are both present in the bounded projection. Spatial adjacency, sorting, Objective membership, and Workstream labels never create an edge.
+The projection exposes a flat graph view in addition to the compatibility Workstream lanes. The renderer places compact task blocks inside content-sized semantic bands (`before`, `now`, `after`) and draws visible spatial paths only for predecessor IDs whose source and target nodes are both present in the bounded projection. Registered Objective regions wrap the member blocks in the band where they appear; a task with missing or unknown Objective metadata remains in an explicitly ungrouped region. Spatial adjacency, sorting, Objective membership, and Workstream labels never create an edge. The accessible textual lineage disclosure is a detail fallback, not the primary graph.
 
 ### Bounded attention packet
 

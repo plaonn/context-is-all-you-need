@@ -6,6 +6,7 @@ import type {
   ProjectContextFreshness,
   ProjectContextLineageEdge,
   ProjectContextNode,
+  ProjectContextObjective,
   ProjectContextSelectionProjection,
   ProjectContextSnapshot,
   ProjectContextStatus
@@ -65,6 +66,7 @@ export function renderBoard(
   <section class="project-matrix" aria-label="Projects in ${escapeAttr(board.context.label)}">
     <div class="matrix-scroll">
       <div class="matrix-orientation" aria-label="Board orientation"><strong>Project columns</strong><span>Recent context above · shared <b>NOW</b> band · next or resume below</span></div>
+      <div class="matrix-now-axis" aria-label="Shared NOW axis"><strong>NOW</strong><span>Current, blocked, and watching context aligns across the project columns.</span></div>
       <div class="project-columns">
         ${projects || `<section class="message"><p>No project dashboard roots were found in this Context's bounded source window.</p></section>`}
       </div>
@@ -102,7 +104,6 @@ function renderBoardProject(project: ProjectContextBoardProject, expanded: boole
   if (!snapshot) {
     return `<article class="project-column project-column-error" data-project-id="${escapeAttr(project.root.id)}">
       <header class="project-column-header"><div><p class="project-kicker">PROJECT COLUMN</p><h2>${escapeHtml(project.root.title)}</h2><p class="project-goal">Project snapshot unavailable in the bounded read.</p></div><a class="canonical-link" href="${escapeAttr(project.root.url)}" target="_blank" rel="noreferrer">Open ↗</a></header>
-      <section class="project-objectives"><p class="objective-empty">Objectives unavailable until this project can be read.</p></section>
       ${renderUnavailableBand("before", "Recent context unavailable")}
       ${renderUnavailableBand("now", "NOW · project read unavailable")}
       ${renderUnavailableBand("after", "Next / resume unavailable")}
@@ -125,7 +126,6 @@ function renderBoardProject(project: ProjectContextBoardProject, expanded: boole
       </div>
       ${snapshot.attention ? renderCompactAttention(snapshot.attention) : ""}
     </header>
-    <section class="project-objectives" aria-label="Short-term Objectives">${renderObjectiveRegions(snapshot)}</section>
     ${renderProjectBand(snapshot, "before")}
     ${renderProjectBand(snapshot, "now")}
     ${renderProjectBand(snapshot, "after")}
@@ -138,37 +138,149 @@ function renderBoardProject(project: ProjectContextBoardProject, expanded: boole
 }
 
 function renderUnavailableBand(band: ProjectContextBand, message: string): string {
-  return `<section class="project-band project-band-${band}" data-band="${band}"><div class="band-caption"><span>${BAND_LABEL[band]}</span><small>${band === "now" ? "Shared comparison band" : "Bounded context"}</small></div><div class="band-nodes"><p class="band-empty">${escapeHtml(message)}</p></div></section>`;
+  return `<section class="project-graph-band project-band-${band}" data-band="${band}"${band === "now" ? ` data-shared-axis="now"` : ""}><div class="band-caption"><strong>${BAND_LABEL[band]}</strong><small>${band === "now" ? "Shared comparison band" : "Bounded context"}</small></div><p class="band-empty">${escapeHtml(message)}</p></section>`;
 }
 
 function renderProjectBand(snapshot: ProjectContextSnapshot, band: ProjectContextBand): string {
   const nodes = snapshot.nodes.filter((node) => node.contextBand === band);
-  const nodeMap = new Map(snapshot.nodes.map((node) => [node.id, node]));
   const description = band === "before" ? "Bounded recent predecessor context" : band === "now" ? "Current, blocked, or watching state" : "Immediate next, resume, or checkpoint context";
-  return `<section class="project-band project-band-${band}" data-band="${band}"${band === "now" ? ` data-shared-axis="now"` : ""}>
+  if (nodes.length === 0) {
+    return `<section class="project-graph-band project-band-${band}" data-band="${band}"${band === "now" ? ` data-shared-axis="now"` : ""}>
+      <div class="band-caption"><strong>${BAND_LABEL[band]}</strong><small>${description}</small></div>
+      <p class="band-empty">No salient nodes in this bounded band.</p>
+    </section>`;
+  }
+  const layout = buildGraphBandLayout(snapshot, nodes);
+  const nodeMap = new Map(snapshot.nodes.map((node) => [node.id, node]));
+  const edgePaths = snapshot.lineageEdges
+    .filter((edge) => layout.positions.has(edge.to))
+    .map((edge) => renderGraphEdgePath(edge, layout, snapshot))
+    .join("");
+  return `<section class="project-graph-band project-band-${band}" data-band="${band}"${band === "now" ? ` data-shared-axis="now"` : ""}>
     <div class="band-caption"><strong>${BAND_LABEL[band]}</strong><small>${description}</small></div>
-    <div class="band-nodes">${nodes.length > 0 ? nodes.map((node) => renderGraphNode(node, nodeMap)).join("") : `<p class="band-empty">No salient nodes in this bounded band.</p>`}</div>
+    <div class="graph-band-canvas" style="--graph-height: ${layout.height}px">
+      <svg class="graph-edge-layer" viewBox="0 0 100 ${layout.height}" preserveAspectRatio="none" aria-hidden="true" data-lineage-source="Context Predecessors">
+        ${edgePaths}
+      </svg>
+      <div class="graph-band-nodes">${layout.groups.map((group) => renderGraphGroup(group, layout, nodeMap)).join("")}</div>
+    </div>
   </section>`;
 }
 
-function renderObjectiveRegions(snapshot: ProjectContextSnapshot): string {
-  if (snapshot.objectives.length === 0) return `<p class="objective-empty">No explicit short-term Objectives; lineage remains ungrouped.</p>`;
-  const nodes = new Map(snapshot.nodes.map((node) => [node.id, node]));
-  return snapshot.objectives.map((objective) => {
-    const memberLinks = objective.nodeIds
-      .map((id) => nodes.get(id))
-      .filter((node): node is ProjectContextNode => Boolean(node))
-      .map((node) => `<a href="${escapeAttr(node.url)}" target="_blank" rel="noreferrer">${escapeHtml(node.title)}</a>`)
-      .join("");
-    return `<section class="objective-region objective-${escapeAttr(objective.attention)}" data-objective-id="${escapeAttr(objective.id)}">
-      <div class="objective-region-heading"><span>OBJECTIVE</span><strong>${escapeHtml(objective.label)}</strong><small>${objective.nodeIds.length} node${objective.nodeIds.length === 1 ? "" : "s"}</small></div>
-      <div class="objective-members">${memberLinks}</div>
-      <span class="objective-note">Presentation grouping; task lifecycle remains canonical.</span>
-    </section>`;
-  }).join("");
+type GraphGroup = {
+  objective: ProjectContextObjective | null;
+  nodes: ProjectContextNode[];
+  startY: number;
+  rows: number;
+  positions: Map<string, GraphPosition>;
+};
+
+type GraphPosition = {
+  column: 1 | 2 | 3;
+  x: number;
+  y: number;
+  row: number;
+};
+
+type GraphBandLayout = {
+  height: number;
+  groups: GraphGroup[];
+  positions: Map<string, GraphPosition>;
+};
+
+function buildGraphBandLayout(snapshot: ProjectContextSnapshot, nodes: ProjectContextNode[]): GraphBandLayout {
+  const nodeIds = new Set(nodes.map((node) => node.id));
+  const groups: Array<{ objective: ProjectContextObjective | null; nodes: ProjectContextNode[] }> = snapshot.objectives
+    .map((objective) => ({ objective, nodes: nodes.filter((node) => node.objectiveId === objective.id) }))
+    .filter((group) => group.nodes.length > 0);
+  const groupedIds = new Set(groups.flatMap((group) => group.nodes.map((node) => node.id)));
+  const ungrouped = nodes.filter((node) => !groupedIds.has(node.id));
+  if (ungrouped.length > 0) groups.push({ objective: null, nodes: ungrouped });
+
+  const outgoing = new Map<string, string[]>();
+  const incoming = new Map<string, string[]>();
+  for (const edge of snapshot.lineageEdges) {
+    if (!nodeIds.has(edge.from) || !nodeIds.has(edge.to)) continue;
+    outgoing.set(edge.from, [...(outgoing.get(edge.from) ?? []), edge.to]);
+    incoming.set(edge.to, [...(incoming.get(edge.to) ?? []), edge.from]);
+  }
+
+  const positions = new Map<string, GraphPosition>();
+  const renderedGroups: GraphGroup[] = [];
+  let y = 0;
+  for (const group of groups) {
+    const groupIds = new Set(group.nodes.map((node) => node.id));
+    const remaining = new Set(group.nodes.map((node) => node.id));
+    const orderedNodes: ProjectContextNode[] = [];
+    while (remaining.size > 0) {
+      const next = group.nodes.find((node) => remaining.has(node.id) && (incoming.get(node.id) ?? []).filter((id) => groupIds.has(id)).every((id) => !remaining.has(id)))
+        ?? group.nodes.find((node) => remaining.has(node.id));
+      if (!next) break;
+      orderedNodes.push(next);
+      remaining.delete(next.id);
+    }
+    const rowById = new Map<string, number>();
+    let nextRow = 0;
+    for (const node of orderedNodes) {
+      const predecessors = (incoming.get(node.id) ?? []).filter((id) => groupIds.has(id));
+      const predecessorRows = predecessors.map((id) => rowById.get(id)).filter((row): row is number => row !== undefined);
+      const branchPredecessor = predecessors.find((id) => (outgoing.get(id) ?? []).length > 1);
+      const row = branchPredecessor && rowById.has(branchPredecessor)
+        ? rowById.get(branchPredecessor)! + 1
+        : predecessorRows.length > 0
+          ? Math.max(...predecessorRows) + 1
+          : nextRow;
+      rowById.set(node.id, row);
+      nextRow = Math.max(nextRow, row + 1);
+    }
+    const rows = rowById.size > 0 ? Math.max(...rowById.values()) + 1 : 1;
+    const groupPositions = new Map<string, GraphPosition>();
+    for (const node of group.nodes) {
+      const predecessors = (incoming.get(node.id) ?? []).filter((id) => groupIds.has(id));
+      const branchPredecessor = predecessors.find((id) => (outgoing.get(id) ?? []).length > 1);
+      const siblings = branchPredecessor ? outgoing.get(branchPredecessor)!.filter((id) => groupIds.has(id)) : [];
+      const siblingIndex = branchPredecessor ? siblings.indexOf(node.id) : -1;
+      const column: 1 | 2 | 3 = siblingIndex >= 0
+        ? siblingIndex === 0 ? 1 : siblingIndex === siblings.length - 1 ? 3 : 2
+        : 2;
+      const position: GraphPosition = {
+        column,
+        x: column === 1 ? 18 : column === 3 ? 82 : 50,
+        y: y + 40 + (rowById.get(node.id) ?? 0) * 100,
+        row: rowById.get(node.id) ?? 0
+      };
+      groupPositions.set(node.id, position);
+      positions.set(node.id, position);
+    }
+    renderedGroups.push({ ...group, startY: y, rows, positions: groupPositions });
+    y += 42 + rows * 84 + 12;
+  }
+
+  return { height: Math.max(104, y - 12), groups: renderedGroups, positions };
 }
 
-function renderGraphNode(node: ProjectContextNode, nodes: ReadonlyMap<string, ProjectContextNode>): string {
+function renderGraphGroup(
+  group: GraphGroup,
+  layout: GraphBandLayout,
+  nodes: ReadonlyMap<string, ProjectContextNode>
+): string {
+  const objective = group.objective;
+  const heading = objective
+    ? `<div class="objective-region-heading"><span>OBJECTIVE</span><strong>${escapeHtml(objective.label)}</strong><small>${objective.nodeIds.length} node${objective.nodeIds.length === 1 ? "" : "s"}</small></div>`
+    : `<div class="objective-region-heading objective-unassigned-heading"><span>LINEAGE</span><strong>Ungrouped explicit context</strong><small>${group.nodes.length} node${group.nodes.length === 1 ? "" : "s"}</small></div>`;
+  const className = objective ? `objective-region objective-${escapeAttr(objective.attention)}` : "objective-unassigned";
+  const id = objective?.id ?? "unassigned";
+  const members = group.nodes
+    .map((node) => renderGraphNode(node, nodes, layout.positions.get(node.id)!))
+    .join("");
+  return `<section class="${className}" data-objective-id="${escapeAttr(id)}">
+    ${heading}
+    <div class="objective-region-nodes">${members}</div>
+    <span class="objective-note">${objective ? "Presentation grouping; task lifecycle remains canonical." : "No Objective inferred from layout or task prose."}</span>
+  </section>`;
+}
+
+function renderGraphNode(node: ProjectContextNode, nodes: ReadonlyMap<string, ProjectContextNode>, position: GraphPosition): string {
   const predecessorLinks = node.predecessorIds
     .map((id) => `<a href="https://app.todoist.com/app/task/${encodeURIComponent(id)}" target="_blank" rel="noreferrer">${escapeHtml(nodes.get(id)?.title ?? id)}</a>`)
     .join("");
@@ -176,7 +288,7 @@ function renderGraphNode(node: ProjectContextNode, nodes: ReadonlyMap<string, Pr
   const recovery = node.attention?.salience === "high"
     ? `<span class="node-recovery">${node.attention.decisionOwner ? `Owner: ${escapeHtml(node.attention.decisionOwner)}` : node.attention.recommendation ? `Next: ${escapeHtml(node.attention.recommendation)}` : "Material attention"}</span>`
     : "";
-  return `<article class="graph-node graph-node-${escapeAttr(node.status)}" data-node-id="${escapeAttr(node.id)}" data-status="${escapeAttr(node.status)}" data-context-band="${escapeAttr(node.contextBand)}">
+  return `<article class="graph-node graph-node-${escapeAttr(node.status)}" data-node-id="${escapeAttr(node.id)}" data-status="${escapeAttr(node.status)}" data-context-band="${escapeAttr(node.contextBand)}" data-graph-column="${position.column}" data-graph-row="${position.row}" style="grid-column: ${position.column}; grid-row: ${position.row + 1}">
     <div class="node-top"><span class="status status-${escapeAttr(node.status)}">${STATUS_LABEL[node.status]}</span>${objective}<a class="map-node-title" href="${escapeAttr(node.url)}" target="_blank" rel="noreferrer">${escapeHtml(node.title)} ↗</a></div>
     <p class="node-summary">${escapeHtml(node.summary)}</p>
     ${recovery}${node.checkpoint ? `<span class="map-node-next">${escapeHtml(node.checkpoint)}</span>` : ""}
@@ -193,7 +305,25 @@ function renderLineageEdges(snapshot: ProjectContextSnapshot): string {
     incoming.set(edge.to, (incoming.get(edge.to) ?? 0) + 1);
   }
   const edges = snapshot.lineageEdges.map((edge) => renderLineageEdge(edge, nodes, outgoing, incoming)).join("");
-  return `<section class="explicit-lineage" aria-label="Explicit contextual lineage"><div class="lineage-heading"><strong>Explicit lineage</strong><span>Context Predecessors only · presentation-only</span></div>${edges ? `<ul class="lineage-edge-list">${edges}</ul>` : `<p class="lineage-empty">No explicit branch or merge edge in the bounded source window.</p>`}</section>`;
+  return `<details class="explicit-lineage" aria-label="Accessible explicit contextual lineage"><summary><strong>Explicit lineage</strong><span>Context Predecessors only · presentation-only</span></summary>${edges ? `<ul class="lineage-edge-list">${edges}</ul>` : `<p class="lineage-empty">No explicit branch or merge edge in the bounded source window.</p>`}</details>`;
+}
+
+function renderGraphEdgePath(edge: ProjectContextLineageEdge, layout: GraphBandLayout, snapshot: ProjectContextSnapshot): string {
+  const target = layout.positions.get(edge.to);
+  if (!target) return "";
+  const source = layout.positions.get(edge.from);
+  const fromX = source?.x ?? 50;
+  const fromY = source?.y ?? 4;
+  const toX = target.x;
+  const toY = target.y;
+  const outgoing = snapshot.lineageEdges.filter((candidate) => candidate.from === edge.from).length;
+  const incoming = snapshot.lineageEdges.filter((candidate) => candidate.to === edge.to).length;
+  const branch = outgoing > 1;
+  const merge = incoming > 1;
+  const kind = [branch ? "branch" : "", merge ? "merge" : ""].filter(Boolean).join("-") || "link";
+  const curve = Math.max(14, Math.abs(toY - fromY) * .42);
+  const path = `M ${fromX} ${fromY} C ${fromX} ${fromY + curve}, ${toX} ${toY - curve}, ${toX} ${toY}`;
+  return `<path class="graph-edge-path graph-edge-${kind}" data-edge-from="${escapeAttr(edge.from)}" data-edge-to="${escapeAttr(edge.to)}" d="${path}" vector-effect="non-scaling-stroke"/>`;
 }
 
 function renderLineageEdge(
@@ -250,7 +380,6 @@ export function renderSnapshot(snapshot: ProjectContextSnapshot): string {
     <a class="canonical-link" href="${escapeAttr(snapshot.url)}" target="_blank" rel="noreferrer">Open canonical root in Todoist ↗</a>
   </section>
   <section class="project-single-graph" aria-label="Project context graph">
-    <section class="project-objectives" aria-label="Short-term Objectives">${renderObjectiveRegions(snapshot)}</section>
     ${renderProjectBand(snapshot, "before")}${renderProjectBand(snapshot, "now")}${renderProjectBand(snapshot, "after")}
     ${renderLineageEdges(snapshot)}
     <div class="detail-nodes">${snapshot.nodes.map((node) => renderNode(node, nodeMap)).join("") || `<section class="message"><p>No salient project nodes were found in the bounded source window.</p></section>`}</div>
